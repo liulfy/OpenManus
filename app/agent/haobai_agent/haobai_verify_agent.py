@@ -8,16 +8,17 @@ from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
-from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
 from app.tool.ask_human import AskHuman
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
 from app.tool.python_execute import PythonExecute
 from app.tool.str_replace_editor import StrReplaceEditor
+from app.tool.api_product_verify.get_pay_per_use_products_execute import GetPayPerUseProducts
+from app.tool.api_product_verify.get_monthly_subscription_products_execute import GetMonthlySubscriptionProducts
+from app.tool.api_product_verify.verify_user_products_status_execute import VerifyUseProductsStatus
 
 
-# 是react框架的。ToolCallAgent是继承了ReActAgent
-class Manus(ToolCallAgent):
+class HaobaiVerifyAgent(ToolCallAgent):
     """A versatile general-purpose agent with support for both local and MCP tools."""
 
     name: str = "Manus"
@@ -35,10 +36,12 @@ class Manus(ToolCallAgent):
     # Add general-purpose tools to the tool collection
     available_tools: ToolCollection = Field(
         default_factory=lambda: ToolCollection(
-            GetUseMovieOrderInfo(),
+            GetPayPerUseProducts(),
+            GetMonthlySubscriptionProducts(),
+            VerifyUseProductsStatus(),
             PythonExecute(), # 执行python代码
-            BrowserUseTool(), # 网页交互工具
-            StrReplaceEditor(), # 支持沙箱功能的文件与目录操作工具
+            # BrowserUseTool(), # 网页交互工具
+            # StrReplaceEditor(), # 支持沙箱功能的文件与目录操作工具
             AskHuman(), # 寻求人类帮助
             Terminate(),
         )
