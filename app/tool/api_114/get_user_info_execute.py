@@ -1,23 +1,83 @@
 
 
-"""
-目标是获取用户的信息（电话号码、电影名、）
 
-"""
+"get"
+url1 = "https://movmgr.js118114.com/bapi/c/order?action=query&limit=10&offset=0&terms={}"
 
-"""
-请按以下业务流程执行。如果无法解决，请"转人工"。
-1、与用户确认手机号码。如果不正确，则以用户提供的电话号码为准。
-2、如果用户电话号码不在业务流程中，则转人工，并退出流程。
-3、根据电话号码查询订单。如果只有一个订单，请回复电影名称、电影播放时间，与用户确认；如果超过一个订单，让用户提供订单中的电影名称、电影播放时间等信息，获取用户订单并与用户确认。
-4、与用户确认订单信息，如果用户否认订单，则转人工。
-"""
+def get_user_films(phone_number, ):
+  return [
+    {
+    "orderId": "60120105817458159",
+    "cinemaName": "中影模范电影城",
+    "filmName": "飞行家",
+    "startDate": "2026-01-13 00:00:00",
+    "endDate": "2026-01-20 23:59:59",
 
-"""
-测试案例
-1、电话号码不在库里，找用户确认电话号码
-2、电话号码在库里，与用户确认，用户提供新的电话号码，但不在库里
-3、有单个订单，与用户确认后，用户否认订单，看是否转人工
-4、用户认可订单，则走后续流程（订单状态和支付信息）
+  }
+  ]
 
-"""
+
+
+
+"get"
+url2 = "https://movmgr.js118114.com/bapi/c/order?action=detail&orderId={}"
+
+orderId = "60120105817458159"
+
+def get_film_detail(order_id):
+  return {}
+
+
+
+
+"post"
+url3 = "https://movmgr.js118114.com/bapi/c/order?action=queryPay"
+
+
+orderId = "60120105817458159"
+
+def get_film_pay_info(phone_number):
+  return [
+      {
+        "payId": 513107,
+        "orderId": "60120094312991367",
+        "amount": 3500,
+        "payType": 12,
+        "payTypeName": "院线通-通券",
+        "credit": "78405299220198520",
+        "payTime": "2026-01-20 09:44:25",
+        "operation": 1,
+        "allowRefundTag": "",
+        "refundCommissionInfo": "",
+        "canRefund": ""
+      },
+      {
+        "payId": 513108,
+        "orderId": "60120094312991367",
+        "amount": 3500,
+        "payType": 12,
+        "payTypeName": "院线通-通券",
+        "credit": "87703939540176621",
+        "payTime": "2026-01-20 09:44:25",
+        "operation": 1,
+        "allowRefundTag": "",
+        "refundCommissionInfo": "",
+        "canRefund": ""
+      }
+    ]
+
+
+{
+  "orderId": "60120105817458159",
+  "cinemaName": "中影模范电影城",
+  "filmName": "飞行家",
+  "province": 320000,
+  "city": 320100,
+  "county": 320104,
+  "state": 6,
+  "startDate": "2026-01-13 00:00:00",
+  "endDate": "2026-01-20 23:59:59",
+  "agentId": 2,
+  "user": "18154311079",
+  "mobile": "18154311079"
+}
