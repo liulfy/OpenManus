@@ -18,4 +18,5 @@ class AskHuman(BaseTool):
     }
 
     async def execute(self, inquire: str) -> str:
+        ## 改改，发一条信息给用户，让用户输入进来
         return input(f"""Bot: {inquire}\n\nYou: """).strip()
