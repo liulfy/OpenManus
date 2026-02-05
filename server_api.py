@@ -228,6 +228,7 @@ def send_thread(client_id: int, conn: socket.socket, state: ConnectionState):
             target_client = get_client_conn(client_id)
             if not target_client:
                 print(f"❌ 操作失败 | 客户端[{client_id}]离线")
+                time.sleep(0.5)
                 continue
             target_sock, target_addr, _ = target_client
             # 发送手动消息

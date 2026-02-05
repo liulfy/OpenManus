@@ -24,6 +24,9 @@ class GlobalDict:
         # self.cross_process_safe_map = manager.dict()
         self.cross_process_safe_map = {}
 
+    def get(self, session_id):
+        return self.cross_process_safe_map[session_id]
+
     def initialize_queue(self, session_id):
         this_queue = Queue()
         self.cross_process_safe_map.__setitem__(session_id, this_queue)

@@ -38,8 +38,8 @@ class ToolCallAgent(ReActAgent):
 
     max_steps: int = 30
     max_observe: Optional[Union[int, bool]] = None
-    session_id = None
-    running = False
+    session_id : str= ''
+    running: bool = False
 
     async def think(self) -> bool:
         """Process current state and decide next actions using tools"""

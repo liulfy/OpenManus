@@ -7,7 +7,7 @@ from server.enhanced_server.global_mq import END_MARK, EXIT_CMD, REPLY_TRIGGER, 
 
 # 客户端网络配置
 SERVER_HOST = '127.0.0.1'  # 局域网重连改为服务端实际IP
-SERVER_PORT = 8080
+SERVER_PORT = 19278
 BUFFER_SIZE = 4096
 CONNECT_TIMEOUT = 10       # 连接超时时间（秒）
 
