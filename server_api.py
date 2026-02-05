@@ -39,7 +39,7 @@ class ConnectionState:
 def get_next_client_id():
     return str(uuid.uuid4())
 
-def add_online_client(client_id, conn: socket.socket, addr: Tuple[str, int], state: ConnectionState):
+async def add_online_client(client_id, conn: socket.socket, addr: Tuple[str, int], state: ConnectionState):
     """添加客户端到在线列表（线程安全）"""
     with client_lock:
         online_clients[client_id] = (conn, addr, state)

@@ -1,6 +1,5 @@
 from app.tool import BaseTool
 from server.enhanced_server.global_mq import global_client_msg_dict, golbal_server_msg_dict
-import time
 
 
 class AskHumanWithApi(BaseTool):
