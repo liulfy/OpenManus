@@ -57,15 +57,16 @@ class HaobaiVerifyAgent(ToolCallAgent):
     _initialized: bool = False
 
     @model_validator(mode="after")
-    def initialize_helper(self) -> "Manus":
+    def initialize_helper(self) -> "HaobaiVerifyAgent":
         """Initialize basic components synchronously."""
         self.browser_context_helper = BrowserContextHelper(self)
         return self
 
     @classmethod
-    async def create(cls, **kwargs) -> "Manus":
+    async def create(cls, session_id, **kwargs) -> "HaobaiVerifyAgent":
         """Factory method to create and properly initialize a Manus instance."""
         instance = cls(**kwargs)
+        instance.session_id = session_id
         await instance.initialize_mcp_servers()
         instance._initialized = True
         return instance

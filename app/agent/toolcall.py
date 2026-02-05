@@ -11,6 +11,9 @@ from app.prompt.toolcall import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.schema import TOOL_CHOICE_TYPE, AgentState, Message, ToolCall, ToolChoice
 from app.tool import CreateChatCompletion, Terminate, ToolCollection
 
+from app.global_info_collector import golbal_dict
+from server.enhanced_server.global_mq import global_msg_queue
+
 
 TOOL_CALL_REQUIRED = "Tool calls required but none provided"
 
@@ -35,6 +38,8 @@ class ToolCallAgent(ReActAgent):
 
     max_steps: int = 30
     max_observe: Optional[Union[int, bool]] = None
+    session_id = None
+    running = False
 
     async def think(self) -> bool:
         """Process current state and decide next actions using tools"""
@@ -78,15 +83,21 @@ class ToolCallAgent(ReActAgent):
         content = response.content if response and response.content else ""
 
         # Log response info
-        logger.info(f"✨ {self.name}'s thoughts: {content}")
+        thoughts_data = f"thoughts: {content}"
+        global_msg_queue.put(f"{self.session_id}:{thoughts_data}")
+        # golbal_dict.add_data(thoughts_data)
+        logger.info(f"✨ {self.name}'s {thoughts_data}") # todo 需要输出
         logger.info(
             f"🛠️ {self.name} selected {len(tool_calls) if tool_calls else 0} tools to use"
         )
         if tool_calls:
+            tool_data = f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}\nTool arguments: {tool_calls[0].function.arguments}"
+            global_msg_queue.put(f"{self.session_id}:{tool_data}")
+            # golbal_dict.add_data(tool_data)
             logger.info(
-                f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}"
+                f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}" # todo 需要输出
             )
-            logger.info(f"🔧 Tool arguments: {tool_calls[0].function.arguments}")
+            logger.info(f"🔧 Tool arguments: {tool_calls[0].function.arguments}") # todo 需要输出
 
         try:
             if response is None:
@@ -147,8 +158,11 @@ class ToolCallAgent(ReActAgent):
             if self.max_observe:
                 result = result[: self.max_observe]
 
+            tool_log_data = f"🎯 Tool '{command.function.name}' completed its mission! Result: {result}"
+            global_msg_queue.put(f"{self.session_id}:{tool_log_data}")
+            # golbal_dict.add_data(tool_log_data)
             logger.info(
-                f"🎯 Tool '{command.function.name}' completed its mission! Result: {result}"
+                 tool_log_data # todo 需要输出，这里是工具输出的结果
             )
 
             # Add tool response to memory
@@ -242,9 +256,14 @@ class ToolCallAgent(ReActAgent):
                     )
         logger.info(f"✨ Cleanup complete for agent '{self.name}'.")
 
+    def cleanup_info_collector(self):
+        golbal_dict.cleanup(self.session_id)
+
     async def run(self, request: Optional[str] = None) -> str:
         """Run the agent with cleanup when done."""
         try:
+            self.running = True
             return await super().run(request)
         finally:
+            self.running = False
             await self.cleanup()

@@ -11,6 +11,7 @@ from app.tool import Terminate, ToolCollection
 from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
 from app.tool.api_product_verify.return_user_phone_number import ReturnUserPhoneNumberExecute
 from app.tool.ask_human import AskHuman
+from app.tool.ask_human_with_api import AskHumanWithApi
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
 from app.tool.python_execute import PythonExecute
@@ -34,17 +35,8 @@ class Manus(ToolCallAgent):
     mcp_clients: MCPClients = Field(default_factory=MCPClients)
 
     # Add general-purpose tools to the tool collection
-    available_tools: ToolCollection = Field(
-        default_factory=lambda: ToolCollection(
-            GetUseMovieOrderInfo(),
-            ReturnUserPhoneNumberExecute(),
-            PythonExecute(), # 执行python代码
-            BrowserUseTool(), # 网页交互工具
-            StrReplaceEditor(), # 支持沙箱功能的文件与目录操作工具
-            AskHuman(), # 寻求人类帮助
-            Terminate(),
-        )
-    )
+    # ask_human_with_api = AskHumanWithApi()
+    available_tools: ToolCollection = None
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
@@ -65,6 +57,28 @@ class Manus(ToolCallAgent):
     async def create(cls, **kwargs) -> "Manus":
         """Factory method to create and properly initialize a Manus instance."""
         instance = cls(**kwargs)
+        await instance.initialize_mcp_servers()
+        instance._initialized = True
+        return instance
+
+    @classmethod
+    async def create_with_session_id(cls, session_id, **kwargs):
+        """Factory method to create and properly initialize a Manus instance."""
+        instance = cls(**kwargs)
+        instance.session_id = session_id
+        ask_human_with_api = AskHumanWithApi()
+        ask_human_with_api.session_id = instance.session_id
+        instance.available_tools = Field(
+            default_factory=lambda: ToolCollection(
+                GetUseMovieOrderInfo(),
+                ReturnUserPhoneNumberExecute(),
+                PythonExecute(),  # 执行python代码
+                BrowserUseTool(),  # 网页交互工具
+                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
+                ask_human_with_api,  # 寻求人类帮助
+                Terminate(),
+            )
+        )
         await instance.initialize_mcp_servers()
         instance._initialized = True
         return instance
@@ -141,6 +155,7 @@ class Manus(ToolCallAgent):
         if self._initialized:
             await self.disconnect_mcp_server()
             self._initialized = False
+        self.cleanup_info_collector()
 
     # 实际执行的function
     async def think(self) -> bool:
