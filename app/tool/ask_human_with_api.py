@@ -1,5 +1,5 @@
 from app.tool import BaseTool
-from server.enhanced_server.global_mq import global_client_msg_dict, golbal_server_msg_dict
+from server.enhanced_server.global_mq import global_client_msg_dict, global_server_msg_dict
 
 
 class AskHumanWithApi(BaseTool):
@@ -17,7 +17,7 @@ class AskHumanWithApi(BaseTool):
         },
         "required": ["inquire"],
     }
-    session_id: str
+    session_id: str = ""
 
     async def execute(self, inquire: str) -> str:
         ## 改改，发一条信息给用户，让用户输入进来。这一句话需要输出给到客户端。
@@ -26,7 +26,7 @@ class AskHumanWithApi(BaseTool):
 
         """
         client_show_clause = f"""Bot: {inquire}\n\nYou: """
-        golbal_server_msg_dict.add_data(self.session_id, client_show_clause)
+        global_server_msg_dict.add_data(self.session_id, client_show_clause)
         client_queue = global_client_msg_dict[self.session_id]
         # 阻塞获取
         client_msg = client_queue.get(block=True, timeout=None)

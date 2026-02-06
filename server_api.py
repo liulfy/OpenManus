@@ -4,10 +4,11 @@ import re
 import threading
 import time
 from typing import Dict, Tuple, Optional
+import asyncio
 
 from app.agent.manus import Manus
-from server.enhanced_server.global_mq import (golbal_server_msg_dict, agent_management, set_agent, get_agent, clear_agent,
-                                              global_msg_queue, online_clients, client_lock,
+from server.enhanced_server.global_mq import (global_server_msg_dict, agent_management, set_agent, get_agent, clear_agent,
+                                            online_clients, client_lock,
                                               set_reply_permission, get_reply_permission, clear_reply_permission,
                                               END_MARK, EXIT_CMD, REPLY_TRIGGER, ENCODING, global_client_msg_dict
                                               )
@@ -44,14 +45,15 @@ async def add_online_client(client_id, conn: socket.socket, addr: Tuple[str, int
     with client_lock:
         online_clients[client_id] = (conn, addr, state)
         # todo 在这边加入具体的manus实例
-        agent = await Manus.create_with_session_id(str(client_id))
+
     # 初始化应答权限为False（默认不允许回答）
-    set_agent(client_id, agent)
-    set_reply_permission(client_id, False)
+
+    set_reply_permission(client_id, True)
     # 构造queue
     global_client_msg_dict.initialize_queue(client_id)
-    golbal_server_msg_dict.initialize_queue(client_id)
+    global_server_msg_dict.initialize_queue(client_id)
     print(f"📇 客户端[{client_id}] | 加入在线列表 | 在线数：{len(online_clients)}")
+
 
 def remove_online_client(client_id: int):
     """从在线列表移除客户端（线程安全）"""
@@ -62,7 +64,7 @@ def remove_online_client(client_id: int):
     clear_reply_permission(client_id)
     clear_agent(client_id)
     global_client_msg_dict.cleanup(client_id)
-    golbal_server_msg_dict.cleanup(client_id)
+    global_server_msg_dict.cleanup(client_id)
     print(f"📇 客户端[{client_id}] | 移出在线列表 | 在线数：{len(online_clients)}")
 
 def get_client_conn(client_id: int) -> Optional[Tuple[socket.socket, Tuple[str, int], ConnectionState]]:
@@ -80,41 +82,82 @@ def queue_listen_thread(client_id):
 
     print(f"📜 全局队列监听线程已启动 | 等待生产者写入数据...")
     while True:
-        try:
-            # 阻塞获取队列消息（队列有数据则立即处理）
-            server_queue = golbal_server_msg_dict.get(client_id)
-            queue_msg = server_queue.get(block=True, timeout=None)
-            # queue_msg = global_msg_queue.get(block=True, timeout=None)
 
-            # 分离目标客户端ID和实际消息
-            send_content = queue_msg.strip()
+        # 阻塞获取队列消息（队列有数据则立即处理）
+        server_queue = global_server_msg_dict.get(client_id)
+        queue_msg = server_queue.get(block=True, timeout=None)
+        # queue_msg = global_msg_queue.get(block=True, timeout=None)
 
-            # 获取目标客户端连接
-            target_client = get_client_conn(client_id)
-            if not target_client:
-                print(f"❌ 队列下发失败 | 客户端[{client_id}]离线或不存在 | 消息：{send_content}")
-                global_msg_queue.task_done()
-                continue
-            target_sock, target_addr, target_state = target_client
-            if not target_state.is_connected():
-                print(f"❌ 队列下发失败 | 客户端[{client_id}]已断开 | 消息：{send_content}")
-                remove_online_client(client_id)
-                global_msg_queue.task_done()
-                continue
+        # 分离目标客户端ID和实际消息
+        send_content = queue_msg.strip()
 
-            # 发送消息并处理应答权限
-            full_msg = f"{send_content}{END_MARK}"
-            send_http_response(target_sock, full_msg)
-            print(f"✅ 队列自动下发成功 | 客户端[{client_id}]（{target_addr}）| 消息：{send_content}")
-            # 关键：若下发的是REPLY_TRIGGER，开启该客户端的应答权限
-            if send_content == REPLY_TRIGGER:
-                set_reply_permission(client_id, True)
-                print(f"🔓 客户端[{client_id}] | 已开启应答权限（仅本次有效）")
+        # 获取目标客户端连接
+        target_client = get_client_conn(client_id)
+        if not target_client:
+            print(f"❌ 队列下发失败 | 客户端[{client_id}]离线或不存在 | 消息：{send_content}")
+            server_queue.task_done()
+            continue
+        target_sock, target_addr, target_state = target_client
+        if not target_state.is_connected():
+            print(f"❌ 队列下发失败 | 客户端[{client_id}]已断开 | 消息：{send_content}")
+            remove_online_client(client_id)
+            server_queue.task_done()
+            continue
 
-            global_msg_queue.task_done()
-        except Exception as e:
-            print(f"⚠️  队列监听线程异常 | 原因：{str(e)[:50]}...")
-            time.sleep(1)  # 异常后短暂休眠，避免死循环
+        # 发送消息并处理应答权限
+        full_msg = f"{send_content}{END_MARK}"
+        send_http_response(target_sock, full_msg)
+        print(f"✅ 队列自动下发成功 | 客户端[{client_id}]（{target_addr}）| 消息：{send_content}")
+        # 关键：若下发的是REPLY_TRIGGER，开启该客户端的应答权限
+        if send_content == REPLY_TRIGGER:
+            set_reply_permission(client_id, True)
+            print(f"🔓 客户端[{client_id}] | 已开启应答权限（仅本次有效）")
+
+        server_queue.task_done()
+
+# def queue_listen_thread(client_id):
+#     """
+#     全局队列监听线程：持续消费队列数据，自动精准下发给指定客户端
+#     这个是一直启动的，只要有数据就往客户端下发
+#     """
+#
+#     print(f"📜 全局队列监听线程已启动 | 等待生产者写入数据...")
+#     while True:
+#         try:
+#             # 阻塞获取队列消息（队列有数据则立即处理）
+#             server_queue = golbal_server_msg_dict.get(client_id)
+#             queue_msg = server_queue.get(block=True, timeout=None)
+#             # queue_msg = global_msg_queue.get(block=True, timeout=None)
+#
+#             # 分离目标客户端ID和实际消息
+#             send_content = queue_msg.strip()
+#
+#             # 获取目标客户端连接
+#             target_client = get_client_conn(client_id)
+#             if not target_client:
+#                 print(f"❌ 队列下发失败 | 客户端[{client_id}]离线或不存在 | 消息：{send_content}")
+#                 global_msg_queue.task_done()
+#                 continue
+#             target_sock, target_addr, target_state = target_client
+#             if not target_state.is_connected():
+#                 print(f"❌ 队列下发失败 | 客户端[{client_id}]已断开 | 消息：{send_content}")
+#                 remove_online_client(client_id)
+#                 global_msg_queue.task_done()
+#                 continue
+#
+#             # 发送消息并处理应答权限
+#             full_msg = f"{send_content}{END_MARK}"
+#             send_http_response(target_sock, full_msg)
+#             print(f"✅ 队列自动下发成功 | 客户端[{client_id}]（{target_addr}）| 消息：{send_content}")
+#             # 关键：若下发的是REPLY_TRIGGER，开启该客户端的应答权限
+#             if send_content == REPLY_TRIGGER:
+#                 set_reply_permission(client_id, True)
+#                 print(f"🔓 客户端[{client_id}] | 已开启应答权限（仅本次有效）")
+#
+#             global_msg_queue.task_done()
+#         except Exception as e:
+#             print(f"⚠️  队列监听线程异常 | 原因：{str(e)}...")
+#             time.sleep(1)  # 异常后短暂休眠，避免死循环
 
 # ---------------------- HTTP消息收发 ----------------------
 def send_http_response(conn: socket.socket, body: str):
@@ -133,58 +176,62 @@ def send_http_response(conn: socket.socket, body: str):
     conn.sendall(full_resp)
 
 # 这是客户端向服务端发送信息
+async def run_recv_thread(client_id: int, conn: socket.socket, state: ConnectionState):
+    agent = await Manus.create_with_session_id(client_id)
+    while state.is_connected():
+        request_data = b''
+        while state.is_connected():
+            chunk = conn.recv(BUFFER_SIZE)
+            if not chunk:
+                raise ConnectionResetError("客户端socket关闭")
+            request_data += chunk
+            if b'\r\n\r\n' in request_data and END_MARK.encode(ENCODING) in request_data:
+                break
+        # 解析客户端消息
+        request_str = request_data.decode(ENCODING, errors='ignore')
+        pattern = r'Keep-Alive: .*?\n(.*?)\[END\]'
+        body_match = re.search(pattern, request_str, re.DOTALL)
+        # body_match = re.search(r'\r\n\r\n(.*?)' + END_MARK, request_str, re.DOTALL)
+        if not body_match:
+            print(f"❌ 客户端[{client_id}] | 消息解析失败")
+            continue
+        client_msg = body_match.group(1).strip()
+        print(f"\n📨 客户端[{client_id}] | 尝试发送消息：{client_msg}")
+
+        # 处理退出命令（不受权限控制）
+        if client_msg == EXIT_CMD:
+            print(f"📤 客户端[{client_id}] | 发送退出命令，准备断开")
+            send_http_response(conn, f"服务端已接收退出命令，连接即将关闭{END_MARK}")
+            state.set_disconnected()
+            break
+
+        # 核心：判断是否有应答权限，无则拒绝并提示
+        if not get_reply_permission(client_id):
+            refuse_msg = f"【权限拒绝】当前未收到服务端应答指令，禁止发送消息！{END_MARK}"
+            send_http_response(conn, refuse_msg)
+            print(f"🚫 客户端[{client_id}] | 无应答权限，消息已拒绝")
+            continue
+
+        # 有应答权限：接收消息并打印，同时关闭应答权限（单次有效）
+        """
+        第一次接收到的话，就是prompt；后面就是触发ask human了。
+        """
+
+        agent_running = get_agent(client_id)
+        if not agent_running:
+            await agent.run(client_msg)
+        else:
+            # todo 这里需要自动发送到ask human那边
+            global_client_msg_dict.add_data(client_id, client_msg)
+        print(f"✅ 客户端[{client_id}] | 有权限，消息已接收：{client_msg}")
+
+        send_http_response(conn, f"【消息已接收】你的应答：{client_msg}{END_MARK}")
+        set_reply_permission(client_id, False)  # 应答后立即关闭权限，防止重复发送
 def recv_thread(client_id: int, conn: socket.socket, addr, state: ConnectionState):
     """接收线程：仅当开启应答权限时，才接收客户端消息，否则拒绝"""
     print(f"📥 客户端[{client_id}] | 接收线程已启动（需授权才能接收消息）")
     try:
-        while state.is_connected():
-            request_data = b''
-            while state.is_connected():
-                chunk = conn.recv(BUFFER_SIZE)
-                if not chunk:
-                    raise ConnectionResetError("客户端socket关闭")
-                request_data += chunk
-                if b'\r\n\r\n' in request_data and END_MARK.encode(ENCODING) in request_data:
-                    break
-            # 解析客户端消息
-            request_str = request_data.decode(ENCODING, errors='ignore')
-            pattern = r'Keep-Alive: .*?\n(.*?)\[END\]'
-            body_match = re.search(pattern, request_str, re.DOTALL)
-            body_match = re.search(r'\r\n\r\n(.*?)' + END_MARK, request_str, re.DOTALL)
-            if not body_match:
-                print(f"❌ 客户端[{client_id}] | 消息解析失败")
-                continue
-            client_msg = body_match.group(1).strip()
-            print(f"\n📨 客户端[{client_id}] | 尝试发送消息：{client_msg}")
-
-            # 处理退出命令（不受权限控制）
-            if client_msg == EXIT_CMD:
-                print(f"📤 客户端[{client_id}] | 发送退出命令，准备断开")
-                send_http_response(conn, f"服务端已接收退出命令，连接即将关闭{END_MARK}")
-                state.set_disconnected()
-                break
-
-            # 核心：判断是否有应答权限，无则拒绝并提示
-            if not get_reply_permission(client_id):
-                refuse_msg = f"【权限拒绝】当前未收到服务端应答指令，禁止发送消息！{END_MARK}"
-                send_http_response(conn, refuse_msg)
-                print(f"🚫 客户端[{client_id}] | 无应答权限，消息已拒绝")
-                continue
-
-            # 有应答权限：接收消息并打印，同时关闭应答权限（单次有效）
-            """
-            第一次接收到的话，就是prompt；后面就是触发ask human了。
-            """
-            agent = get_agent(client_id)
-            if not agent.running:
-                agent.run(client_msg)
-            else:
-                # todo 这里需要自动发送到ask human那边
-                global_client_msg_dict.add_data(client_id, client_msg)
-            print(f"✅ 客户端[{client_id}] | 有权限，消息已接收：{client_msg}")
-
-            send_http_response(conn, f"【消息已接收】你的应答：{client_msg}{END_MARK}")
-            set_reply_permission(client_id, False)  # 应答后立即关闭权限，防止重复发送
+        asyncio.run(run_recv_thread(client_id, conn, state))
 
     except (ConnectionResetError, BrokenPipeError, OSError) as e:
         if state.is_connected():
@@ -232,7 +279,7 @@ def send_thread(client_id: int, conn: socket.socket, state: ConnectionState):
                 continue
             target_sock, target_addr, _ = target_client
             # 发送手动消息
-            server_msg_queue = golbal_server_msg_dict[client_id]
+            server_msg_queue = global_server_msg_dict.get(client_id)
             # 阻塞获取，不需要用循环包起来
             client_msg = server_msg_queue.get(block=True, timeout=None)
 
@@ -251,7 +298,7 @@ def handle_single_client(conn: socket.socket, addr):
     """处理单个客户端完整生命周期"""
     client_id = get_next_client_id()
     conn_state = ConnectionState()
-    add_online_client(client_id, conn, addr, conn_state)
+    asyncio.run(add_online_client(client_id, conn, addr, conn_state))
 
     # 打印连接信息
     print(f"\n" + "="*60)

@@ -155,7 +155,6 @@ class Manus(ToolCallAgent):
         if self._initialized:
             await self.disconnect_mcp_server()
             self._initialized = False
-        self.cleanup_info_collector()
 
     # 实际执行的function
     async def think(self) -> bool:

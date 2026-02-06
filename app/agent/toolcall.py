@@ -11,9 +11,7 @@ from app.prompt.toolcall import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.schema import TOOL_CHOICE_TYPE, AgentState, Message, ToolCall, ToolChoice
 from app.tool import CreateChatCompletion, Terminate, ToolCollection
 
-from app.global_info_collector import golbal_dict
-from server.enhanced_server.global_mq import global_msg_queue
-
+from server.enhanced_server.global_mq import global_server_msg_dict
 
 TOOL_CALL_REQUIRED = "Tool calls required but none provided"
 
@@ -84,7 +82,9 @@ class ToolCallAgent(ReActAgent):
 
         # Log response info
         thoughts_data = f"thoughts: {content}"
-        global_msg_queue.put(f"{self.session_id}:{thoughts_data}")
+        msg_queue = global_server_msg_dict.get(self.session_id)
+        msg_queue.put(thoughts_data)
+        # global_msg_queue.put(f"{self.session_id}:{thoughts_data}")
         # golbal_dict.add_data(thoughts_data)
         logger.info(f"✨ {self.name}'s {thoughts_data}") # todo 需要输出
         logger.info(
@@ -92,7 +92,8 @@ class ToolCallAgent(ReActAgent):
         )
         if tool_calls:
             tool_data = f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}\nTool arguments: {tool_calls[0].function.arguments}"
-            global_msg_queue.put(f"{self.session_id}:{tool_data}")
+            msg_queue.put(tool_data)
+            # global_msg_queue.put(f"{self.session_id}:{tool_data}")
             # golbal_dict.add_data(tool_data)
             logger.info(
                 f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}" # todo 需要输出
@@ -159,7 +160,8 @@ class ToolCallAgent(ReActAgent):
                 result = result[: self.max_observe]
 
             tool_log_data = f"🎯 Tool '{command.function.name}' completed its mission! Result: {result}"
-            global_msg_queue.put(f"{self.session_id}:{tool_log_data}")
+            msg_queue = global_server_msg_dict.get(self.session_id)
+            msg_queue.put(tool_log_data)
             # golbal_dict.add_data(tool_log_data)
             logger.info(
                  tool_log_data # todo 需要输出，这里是工具输出的结果
@@ -256,8 +258,6 @@ class ToolCallAgent(ReActAgent):
                     )
         logger.info(f"✨ Cleanup complete for agent '{self.name}'.")
 
-    def cleanup_info_collector(self):
-        golbal_dict.cleanup(self.session_id)
 
     async def run(self, request: Optional[str] = None) -> str:
         """Run the agent with cleanup when done."""

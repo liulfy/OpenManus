@@ -36,7 +36,16 @@ class Manus(ToolCallAgent):
 
     # Add general-purpose tools to the tool collection
     # ask_human_with_api = AskHumanWithApi()
-    available_tools: ToolCollection = None
+    available_tools: ToolCollection = Field(
+            default_factory=lambda: ToolCollection(
+                GetUseMovieOrderInfo(),
+                ReturnUserPhoneNumberExecute(),
+                PythonExecute(),  # 执行python代码
+                BrowserUseTool(),  # 网页交互工具
+                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
+                Terminate(),
+            )
+        )
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
@@ -68,19 +77,10 @@ class Manus(ToolCallAgent):
         instance.session_id = session_id
         ask_human_with_api = AskHumanWithApi()
         ask_human_with_api.session_id = instance.session_id
-        instance.available_tools = Field(
-            default_factory=lambda: ToolCollection(
-                GetUseMovieOrderInfo(),
-                ReturnUserPhoneNumberExecute(),
-                PythonExecute(),  # 执行python代码
-                BrowserUseTool(),  # 网页交互工具
-                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
-                ask_human_with_api,  # 寻求人类帮助
-                Terminate(),
-            )
-        )
+        instance.available_tools.add_tool(ask_human_with_api)
         await instance.initialize_mcp_servers()
         instance._initialized = True
+        print(f"instance id is {instance.session_id}")
         return instance
 
     async def initialize_mcp_servers(self) -> None:
@@ -155,7 +155,6 @@ class Manus(ToolCallAgent):
         if self._initialized:
             await self.disconnect_mcp_server()
             self._initialized = False
-        self.cleanup_info_collector()
 
     # 实际执行的function
     async def think(self) -> bool:

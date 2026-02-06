@@ -43,7 +43,7 @@ class GlobalDict:
         self.cross_process_safe_map.pop(session_id)
 
 # 这个存放的是直接输出出去给到用户的数据
-golbal_server_msg_dict = GlobalDict()
+global_server_msg_dict = GlobalDict()
 # 这个存放的是客户端输入进来的数据
 global_client_msg_dict = GlobalDict()
 
@@ -73,18 +73,18 @@ def clear_reply_permission(client_id: int):
             del client_reply_permission[client_id]
 
 
-def set_agent(client_id, agent):
+def set_agent(client_id):
     """设置客户端应答权限（线程安全）"""
     with permission_lock:
-        client_reply_permission[client_id] = agent
+        agent_management[client_id] = False
 
 def get_agent(client_id):
     """获取客户端应答权限（线程安全），默认不允许"""
     with permission_lock:
-        return client_reply_permission.get(client_id)
+        return agent_management.get(client_id)
 
 def clear_agent(client_id):
     """客户端断开时清理应答权限（线程安全）"""
     with permission_lock:
-        if client_id in client_reply_permission:
-            del client_reply_permission[client_id]
+        if client_id in agent_management:
+            del agent_management[client_id]
