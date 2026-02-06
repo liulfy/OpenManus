@@ -56,34 +56,34 @@ permission_lock = threading.Lock()  # 权限表操作锁
 online_clients: Dict[int, Tuple] = {}
 client_lock = threading.Lock()    # 在线客户端表操作锁
 
-def set_reply_permission(client_id: int, allow: bool):
+def set_reply_permission(client_id, allow: bool):
     """设置客户端应答权限（线程安全）"""
     with permission_lock:
         client_reply_permission[client_id] = allow
 
-def get_reply_permission(client_id: int) -> bool:
+def get_reply_permission(client_id) -> bool:
     """获取客户端应答权限（线程安全），默认不允许"""
     with permission_lock:
         return client_reply_permission.get(client_id, False)
 
-def clear_reply_permission(client_id: int):
+def clear_reply_permission(client_id):
     """客户端断开时清理应答权限（线程安全）"""
     with permission_lock:
         if client_id in client_reply_permission:
             del client_reply_permission[client_id]
 
 
-def set_agent(client_id):
+def set_agent_status(client_id, status = False):
     """设置客户端应答权限（线程安全）"""
     with permission_lock:
-        agent_management[client_id] = False
+        agent_management[client_id] = status
 
-def get_agent(client_id):
+def get_agent_status(client_id):
     """获取客户端应答权限（线程安全），默认不允许"""
     with permission_lock:
         return agent_management.get(client_id)
 
-def clear_agent(client_id):
+def clear_agent_status(client_id):
     """客户端断开时清理应答权限（线程安全）"""
     with permission_lock:
         if client_id in agent_management:

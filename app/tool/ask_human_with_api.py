@@ -1,5 +1,5 @@
 from app.tool import BaseTool
-from server.enhanced_server.global_mq import global_client_msg_dict, global_server_msg_dict
+from server.enhanced_server.global_mq import global_client_msg_dict, global_server_msg_dict, set_reply_permission
 
 
 class AskHumanWithApi(BaseTool):
@@ -27,7 +27,10 @@ class AskHumanWithApi(BaseTool):
         """
         client_show_clause = f"""Bot: {inquire}\n\nYou: """
         global_server_msg_dict.add_data(self.session_id, client_show_clause)
-        client_queue = global_client_msg_dict[self.session_id]
+        client_queue = global_client_msg_dict.get(self.session_id)
+        set_reply_permission(self.session_id, True)
+        print(f"🔓 客户端[{self.session_id}] | 已开启应答权限（仅本次有效）")
         # 阻塞获取
         client_msg = client_queue.get(block=True, timeout=None)
+        client_queue.task_done()
         return client_msg.strip() # todo 需要调整下格式什么的

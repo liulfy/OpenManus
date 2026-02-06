@@ -7,8 +7,8 @@ from typing import Dict, Tuple, Optional
 import asyncio
 
 from app.agent.manus import Manus
-from server.enhanced_server.global_mq import (global_server_msg_dict, agent_management, set_agent, get_agent, clear_agent,
-                                            online_clients, client_lock,
+from server.enhanced_server.global_mq import (global_server_msg_dict, agent_management, set_agent_status, get_agent_status, clear_agent_status,
+                                              online_clients, client_lock,
                                               set_reply_permission, get_reply_permission, clear_reply_permission,
                                               END_MARK, EXIT_CMD, REPLY_TRIGGER, ENCODING, global_client_msg_dict
                                               )
@@ -37,7 +37,7 @@ class ConnectionState:
             return self.connected
 
 # ---------------------- 客户端ID管理 ----------------------
-def get_next_client_id():
+def get_next_session_id():
     return str(uuid.uuid4())
 
 async def add_online_client(client_id, conn: socket.socket, addr: Tuple[str, int], state: ConnectionState):
@@ -62,7 +62,7 @@ def remove_online_client(client_id: int):
             del online_clients[client_id]
     # 清理应答权限
     clear_reply_permission(client_id)
-    clear_agent(client_id)
+    clear_agent_status(client_id)
     global_client_msg_dict.cleanup(client_id)
     global_server_msg_dict.cleanup(client_id)
     print(f"📇 客户端[{client_id}] | 移出在线列表 | 在线数：{len(online_clients)}")
@@ -77,7 +77,7 @@ def get_client_conn(client_id: int) -> Optional[Tuple[socket.socket, Tuple[str, 
 def queue_listen_thread(client_id):
     """
     全局队列监听线程：持续消费队列数据，自动精准下发给指定客户端
-    这个是一直启动的，只要有数据就往客户端下发
+    这个是一直启动的，只要有数据就往客户端下发，恰当时机打开接收客户端信息的开关
     """
 
     print(f"📜 全局队列监听线程已启动 | 等待生产者写入数据...")
@@ -108,11 +108,6 @@ def queue_listen_thread(client_id):
         full_msg = f"{send_content}{END_MARK}"
         send_http_response(target_sock, full_msg)
         print(f"✅ 队列自动下发成功 | 客户端[{client_id}]（{target_addr}）| 消息：{send_content}")
-        # 关键：若下发的是REPLY_TRIGGER，开启该客户端的应答权限
-        if send_content == REPLY_TRIGGER:
-            set_reply_permission(client_id, True)
-            print(f"🔓 客户端[{client_id}] | 已开启应答权限（仅本次有效）")
-
         server_queue.task_done()
 
 # def queue_listen_thread(client_id):
@@ -176,8 +171,8 @@ def send_http_response(conn: socket.socket, body: str):
     conn.sendall(full_resp)
 
 # 这是客户端向服务端发送信息
-async def run_recv_thread(client_id: int, conn: socket.socket, state: ConnectionState):
-    agent = await Manus.create_with_session_id(client_id)
+async def run_recv_thread(session_id, conn: socket.socket, state: ConnectionState):
+    agent = await Manus.create_with_session_id(session_id)
     while state.is_connected():
         request_data = b''
         while state.is_connected():
@@ -193,23 +188,23 @@ async def run_recv_thread(client_id: int, conn: socket.socket, state: Connection
         body_match = re.search(pattern, request_str, re.DOTALL)
         # body_match = re.search(r'\r\n\r\n(.*?)' + END_MARK, request_str, re.DOTALL)
         if not body_match:
-            print(f"❌ 客户端[{client_id}] | 消息解析失败")
+            print(f"❌ 客户端[{session_id}] | 消息解析失败")
             continue
         client_msg = body_match.group(1).strip()
-        print(f"\n📨 客户端[{client_id}] | 尝试发送消息：{client_msg}")
+        print(f"\n📨 客户端[{session_id}] | 尝试发送消息：{client_msg}")
 
         # 处理退出命令（不受权限控制）
         if client_msg == EXIT_CMD:
-            print(f"📤 客户端[{client_id}] | 发送退出命令，准备断开")
+            print(f"📤 客户端[{session_id}] | 发送退出命令，准备断开")
             send_http_response(conn, f"服务端已接收退出命令，连接即将关闭{END_MARK}")
             state.set_disconnected()
             break
 
         # 核心：判断是否有应答权限，无则拒绝并提示
-        if not get_reply_permission(client_id):
+        if not get_reply_permission(session_id):
             refuse_msg = f"【权限拒绝】当前未收到服务端应答指令，禁止发送消息！{END_MARK}"
             send_http_response(conn, refuse_msg)
-            print(f"🚫 客户端[{client_id}] | 无应答权限，消息已拒绝")
+            print(f"🚫 客户端[{session_id}] | 无应答权限，消息已拒绝")
             continue
 
         # 有应答权限：接收消息并打印，同时关闭应答权限（单次有效）
@@ -217,35 +212,36 @@ async def run_recv_thread(client_id: int, conn: socket.socket, state: Connection
         第一次接收到的话，就是prompt；后面就是触发ask human了。
         """
 
-        agent_running = get_agent(client_id)
+        agent_running = get_agent_status(session_id)
         if not agent_running:
             await agent.run(client_msg)
+            set_agent_status(session_id, True)
         else:
             # todo 这里需要自动发送到ask human那边
-            global_client_msg_dict.add_data(client_id, client_msg)
-        print(f"✅ 客户端[{client_id}] | 有权限，消息已接收：{client_msg}")
+            global_client_msg_dict.add_data(session_id, client_msg)
+        print(f"✅ 客户端[{session_id}] | 有权限，消息已接收：{client_msg}")
 
         send_http_response(conn, f"【消息已接收】你的应答：{client_msg}{END_MARK}")
-        set_reply_permission(client_id, False)  # 应答后立即关闭权限，防止重复发送
-def recv_thread(client_id: int, conn: socket.socket, addr, state: ConnectionState):
+        set_reply_permission(session_id, False)  # 应答后立即关闭权限，防止重复发送
+def recv_thread(session_id, conn: socket.socket, addr, state: ConnectionState):
     """接收线程：仅当开启应答权限时，才接收客户端消息，否则拒绝"""
-    print(f"📥 客户端[{client_id}] | 接收线程已启动（需授权才能接收消息）")
+    print(f"📥 客户端[{session_id}] | 接收线程已启动（需授权才能接收消息）")
     try:
-        asyncio.run(run_recv_thread(client_id, conn, state))
+        asyncio.run(run_recv_thread(session_id, conn, state))
 
     except (ConnectionResetError, BrokenPipeError, OSError) as e:
         if state.is_connected():
-            print(f"❌ 客户端[{client_id}] | 连接断开（{str(e)[:20]}...）")
+            print(f"❌ 客户端[{session_id}] | 连接断开（{str(e)[:20]}...）")
             state.set_disconnected()
     finally:
-        remove_online_client(client_id)
-        print(f"📥 客户端[{client_id}] | 接收线程已终止")
+        remove_online_client(session_id)
+        print(f"📥 客户端[{session_id}] | 接收线程已终止")
 
 # todo 每启动一个客户端，都需要启动一个manus服务示例。
 # todo 这是服务端向客户端下发信息
-def send_thread(client_id: int, conn: socket.socket, state: ConnectionState):
+def send_thread(session_id, conn: socket.socket, state: ConnectionState):
     """服务端手动操作线程：查看在线/手动下发/手动开启应答权限"""
-    print(f"📤 客户端[{client_id}] | 手动操作线程已启动")
+    print(f"📤 客户端[{session_id}] | 手动操作线程已启动")
     print(f"💡 操作规则：")
     print(f"   1. list → 查看在线客户端")
     print(f"   2. ID:消息 → 手动精准下发（如 1:手动发送数据）")
@@ -272,45 +268,45 @@ def send_thread(client_id: int, conn: socket.socket, state: ConnectionState):
 
 
             # target_msg = msg.strip()
-            target_client = get_client_conn(client_id)
+            target_client = get_client_conn(session_id)
             if not target_client:
-                print(f"❌ 操作失败 | 客户端[{client_id}]离线")
+                print(f"❌ 操作失败 | 客户端[{session_id}]离线")
                 time.sleep(0.5)
                 continue
             target_sock, target_addr, _ = target_client
             # 发送手动消息
-            server_msg_queue = global_server_msg_dict.get(client_id)
+            server_msg_queue = global_server_msg_dict.get(session_id)
             # 阻塞获取，不需要用循环包起来
             client_msg = server_msg_queue.get(block=True, timeout=None)
 
             client_msg = client_msg.strip()
             send_http_response(target_sock, f"{client_msg}{END_MARK}")
-            print(f"✅ 手动下发成功 | 客户端[{client_id}] | 消息：{client_msg}")
+            print(f"✅ 手动下发成功 | 客户端[{session_id}] | 消息：{client_msg}")
             continue
     except Exception as e:
         if state.is_connected():
             print(f"❌ 手动操作线程异常 | {str(e)[:30]}...")
     finally:
-        print(f"📤 客户端[{client_id}] | 手动操作线程已终止")
+        print(f"📤 客户端[{session_id}] | 手动操作线程已终止")
 
 # ---------------------- 客户端连接处理 ----------------------
 def handle_single_client(conn: socket.socket, addr):
     """处理单个客户端完整生命周期"""
-    client_id = get_next_client_id()
+    session_id = get_next_session_id()
     conn_state = ConnectionState()
-    asyncio.run(add_online_client(client_id, conn, addr, conn_state))
+    asyncio.run(add_online_client(session_id, conn, addr, conn_state))
 
     # 打印连接信息
     print(f"\n" + "="*60)
-    print(f"✅ 新客户端连接 | ID:{client_id} | 地址:{addr}")
+    print(f"✅ 新客户端连接 | ID:{session_id} | 地址:{addr}")
     print(f"✅ 连接时间：{time.strftime('%Y-%m-%d %H:%M:%S')} | 在线数:{len(online_clients)}")
     print(f"="*60 + "\n")
     try:
         # 启动收发线程
-        t_recv = threading.Thread(target=recv_thread, args=(client_id, conn, addr, conn_state), daemon=True)
-        t_send = threading.Thread(target=send_thread, args=(client_id, conn, conn_state), daemon=True)
+        t_recv = threading.Thread(target=recv_thread, args=(session_id, conn, addr, conn_state), daemon=True)
+        t_send = threading.Thread(target=send_thread, args=(session_id, conn, conn_state), daemon=True)
         # 启动全局队列监听线程（守护线程）
-        t_queue = threading.Thread(target=queue_listen_thread, args=(client_id, ), daemon=True)
+        t_queue = threading.Thread(target=queue_listen_thread, args=(session_id, ), daemon=True)
         t_recv.start()
         t_send.start()
         t_queue.start()
@@ -319,7 +315,7 @@ def handle_single_client(conn: socket.socket, addr):
         t_send.join()
     finally:
         conn.close()
-        print(f"🔌 客户端[{client_id}] | 连接已释放")
+        print(f"🔌 客户端[{session_id}] | 连接已释放")
         print(f"="*60 + "\n")
 
 # ---------------------- 服务端主启动 ----------------------

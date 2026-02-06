@@ -38,8 +38,8 @@ class Manus(ToolCallAgent):
     # ask_human_with_api = AskHumanWithApi()
     available_tools: ToolCollection = Field(
             default_factory=lambda: ToolCollection(
-                GetUseMovieOrderInfo(),
-                ReturnUserPhoneNumberExecute(),
+                # GetUseMovieOrderInfo(),
+                # ReturnUserPhoneNumberExecute(),
                 PythonExecute(),  # 执行python代码
                 BrowserUseTool(),  # 网页交互工具
                 StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
