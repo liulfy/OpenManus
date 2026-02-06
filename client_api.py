@@ -2,7 +2,6 @@
 import socket
 import re
 import threading
-import time
 from server.enhanced_server.global_mq import END_MARK, EXIT_CMD, REPLY_TRIGGER, ENCODING
 
 # 客户端网络配置

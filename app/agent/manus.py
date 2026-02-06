@@ -10,7 +10,6 @@ from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
 from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
 from app.tool.api_product_verify.return_user_phone_number import ReturnUserPhoneNumberExecute
-from app.tool.ask_human import AskHuman
 from app.tool.ask_human_with_api import AskHumanWithApi
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
