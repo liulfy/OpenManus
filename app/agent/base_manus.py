@@ -1,4 +1,6 @@
-from typing import Dict, List, Optional
+
+from typing import Dict, List, Optional, Type, TypeVar
+from abc import ABC
 
 from pydantic import Field, model_validator
 
@@ -8,8 +10,6 @@ from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
-from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
-from app.tool.api_product_verify.return_user_phone_number import ReturnUserPhoneNumberExecute
 from app.tool.ask_human_with_api import AskHumanWithApi
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
@@ -17,12 +17,11 @@ from app.tool.python_execute import PythonExecute
 from app.tool.str_replace_editor import StrReplaceEditor
 
 
-# 是react框架的。ToolCallAgent是继承了ReActAgent
-class Manus(ToolCallAgent):
-    """A versatile general-purpose agent with support for both local and MCP tools."""
+class BaseManus(ToolCallAgent, ABC):
+    """基础通用Agent基类，支持本地和MCP工具，子类可自定义available_tools"""
 
-    name: str = "Manus"
-    description: str = "A versatile agent that can solve various tasks using multiple tools including MCP-based tools"
+    name: str = "BaseManus"
+    description: str = "A base versatile agent that can solve various tasks using multiple tools including MCP-based tools"
 
     system_prompt: str = SYSTEM_PROMPT.format(directory=config.workspace_root)
     next_step_prompt: str = NEXT_STEP_PROMPT
@@ -33,18 +32,15 @@ class Manus(ToolCallAgent):
     # MCP clients for remote tool access
     mcp_clients: MCPClients = Field(default_factory=MCPClients)
 
-    # Add general-purpose tools to the tool collection
-    # ask_human_with_api = AskHumanWithApi()
+    # 核心修改：将available_tools设为可配置，默认保留原工具集合
     available_tools: ToolCollection = Field(
-            default_factory=lambda: ToolCollection(
-                # GetUseMovieOrderInfo(),
-                # ReturnUserPhoneNumberExecute(),
-                PythonExecute(),  # 执行python代码
-                BrowserUseTool(),  # 网页交互工具
-                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
-                Terminate(),
-            )
+        default_factory=lambda: ToolCollection(
+            PythonExecute(),  # 执行python代码
+            BrowserUseTool(),  # 网页交互工具
+            StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
+            Terminate(),
         )
+    )
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
@@ -56,14 +52,15 @@ class Manus(ToolCallAgent):
     _initialized: bool = False
 
     @model_validator(mode="after")
-    def initialize_helper(self) -> "Manus":
+    def initialize_helper(self) -> "BaseManus":
         """Initialize basic components synchronously."""
         self.browser_context_helper = BrowserContextHelper(self)
         return self
 
     @classmethod
-    async def create(cls, **kwargs) -> "Manus":
-        """Factory method to create and properly initialize a Manus instance."""
+    async def create(cls, **kwargs):
+        """Factory method to create and properly initialize a BaseManus instance."""
+        # 允许通过kwargs覆盖available_tools
         instance = cls(**kwargs)
         await instance.initialize_mcp_servers()
         instance._initialized = True
@@ -71,8 +68,9 @@ class Manus(ToolCallAgent):
 
     @classmethod
     async def create_with_session_id(cls, session_id, **kwargs):
-        """Factory method to create and properly initialize a Manus instance."""
-        instance = cls(**kwargs)
+        """Factory method to create and properly initialize a BaseManus instance with session id."""
+        # 允许通过kwargs覆盖available_tools
+        instance = cls(** kwargs)
         instance.session_id = session_id
         ask_human_with_api = AskHumanWithApi()
         ask_human_with_api.session_id = instance.session_id
@@ -147,7 +145,7 @@ class Manus(ToolCallAgent):
         self.available_tools.add_tools(*self.mcp_clients.tools)
 
     async def cleanup(self):
-        """Clean up Manus agent resources."""
+        """Clean up BaseManus agent resources."""
         if self.browser_context_helper:
             await self.browser_context_helper.cleanup_browser()
         # Disconnect from all MCP servers only if we were initialized
@@ -182,3 +180,34 @@ class Manus(ToolCallAgent):
         self.next_step_prompt = original_prompt
 
         return result
+
+
+# 示例2：扩展默认工具（不覆盖，而是在创建实例时添加）
+async def create_extended_manus():
+    # 创建BaseManus实例，额外添加自定义工具
+    custom_tools = ToolCollection(
+        PythonExecute(),
+        BrowserUseTool(),
+        StrReplaceEditor(),
+        Terminate(),
+        # 新增自定义工具
+        # CustomTool(),
+    )
+    manus = await BaseManus.create(available_tools=custom_tools)
+    return manus
+
+
+# 示例3：通过create_with_session_id创建并调整工具
+async def create_custom_session_manus(session_id):
+    # 先创建默认工具集合，再移除不需要的工具
+    base_tools = ToolCollection(
+        PythonExecute(),
+        Terminate(),
+    )
+    manus = await BaseManus.create_with_session_id(
+        session_id=session_id,
+        available_tools=base_tools
+    )
+    # 动态添加工具
+    manus.available_tools.add_tool(BrowserUseTool())
+    return manus

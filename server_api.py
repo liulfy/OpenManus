@@ -6,7 +6,7 @@ import time
 from typing import Tuple, Optional
 import asyncio
 
-from app.agent.manus import Manus
+from app.agent.manus_back.manus import Manus
 from server.enhanced_server.global_mq import (global_server_msg_dict, set_agent_status, get_agent_status, clear_agent_status,
                                               client_lock, set_reply_permission, get_reply_permission, clear_reply_permission,
                                               END_MARK, EXIT_CMD, ENCODING, global_client_msg_dict
@@ -181,7 +181,7 @@ async def run_recv_thread(session_id, conn: socket.socket, state: ConnectionStat
             global_client_msg_dict.add_data(session_id, client_msg)
         print(f"✅ 客户端[{session_id}] | 有权限，消息已接收：{client_msg}")
 
-        send_http_response(conn, f"【消息已接收】你的应答：{client_msg}{END_MARK}")
+        send_http_response(conn, f"【客户端消息已接收】：{client_msg}{END_MARK}")
         set_reply_permission(session_id, False)  # 应答后立即关闭权限，防止重复发送
         print(f"已关闭{session_id}接收权限")
 

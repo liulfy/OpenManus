@@ -8,9 +8,6 @@ from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
-from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
-from app.tool.api_product_verify.return_user_phone_number import ReturnUserPhoneNumberExecute
-from app.tool.ask_human import AskHuman
 from app.tool.ask_human_with_api import AskHumanWithApi
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
@@ -36,7 +33,16 @@ class Manus(ToolCallAgent):
 
     # Add general-purpose tools to the tool collection
     # ask_human_with_api = AskHumanWithApi()
-    available_tools: ToolCollection = None
+    available_tools: ToolCollection = Field(
+            default_factory=lambda: ToolCollection(
+                # GetUseMovieOrderInfo(),
+                # ReturnUserPhoneNumberExecute(),
+                PythonExecute(),  # 执行python代码
+                BrowserUseTool(),  # 网页交互工具
+                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
+                Terminate(),
+            )
+        )
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
@@ -68,19 +74,10 @@ class Manus(ToolCallAgent):
         instance.session_id = session_id
         ask_human_with_api = AskHumanWithApi()
         ask_human_with_api.session_id = instance.session_id
-        instance.available_tools = Field(
-            default_factory=lambda: ToolCollection(
-                GetUseMovieOrderInfo(),
-                ReturnUserPhoneNumberExecute(),
-                PythonExecute(),  # 执行python代码
-                BrowserUseTool(),  # 网页交互工具
-                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
-                ask_human_with_api,  # 寻求人类帮助
-                Terminate(),
-            )
-        )
+        instance.available_tools.add_tool(ask_human_with_api)
         await instance.initialize_mcp_servers()
         instance._initialized = True
+        print(f"instance id is {instance.session_id}")
         return instance
 
     async def initialize_mcp_servers(self) -> None:

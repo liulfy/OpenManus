@@ -8,16 +8,17 @@ from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
-from app.tool.ask_human import AskHuman
+from business_scene.haobai.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
+from business_scene.haobai.api_product_verify.return_user_phone_number import ReturnUserPhoneNumberExecute
+from app.tool.ask_human_with_api import AskHumanWithApi
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
 from app.tool.python_execute import PythonExecute
-from business_scene.haobai.api_product_verify.get_pay_per_use_products_execute import GetPayPerUseProducts
-from business_scene.haobai.api_product_verify.get_monthly_subscription_products_execute import GetMonthlySubscriptionProducts
-from business_scene.haobai.api_product_verify.verify_user_products_status_execute import VerifyUseProductsStatus
+from app.tool.str_replace_editor import StrReplaceEditor
 
 
-class HaobaiVerifyAgent(ToolCallAgent):
+# 是react框架的。ToolCallAgent是继承了ReActAgent
+class Manus(ToolCallAgent):
     """A versatile general-purpose agent with support for both local and MCP tools."""
 
     name: str = "Manus"
@@ -33,18 +34,8 @@ class HaobaiVerifyAgent(ToolCallAgent):
     mcp_clients: MCPClients = Field(default_factory=MCPClients)
 
     # Add general-purpose tools to the tool collection
-    available_tools: ToolCollection = Field(
-        default_factory=lambda: ToolCollection(
-            GetPayPerUseProducts(),
-            GetMonthlySubscriptionProducts(),
-            VerifyUseProductsStatus(),
-            PythonExecute(), # 执行python代码
-            # BrowserUseTool(), # 网页交互工具
-            # StrReplaceEditor(), # 支持沙箱功能的文件与目录操作工具
-            AskHuman(), # 寻求人类帮助
-            Terminate(),
-        )
-    )
+    # ask_human_with_api = AskHumanWithApi()
+    available_tools: ToolCollection = None
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
     browser_context_helper: Optional[BrowserContextHelper] = None
@@ -56,16 +47,37 @@ class HaobaiVerifyAgent(ToolCallAgent):
     _initialized: bool = False
 
     @model_validator(mode="after")
-    def initialize_helper(self) -> "HaobaiVerifyAgent":
+    def initialize_helper(self) -> "Manus":
         """Initialize basic components synchronously."""
         self.browser_context_helper = BrowserContextHelper(self)
         return self
 
     @classmethod
-    async def create(cls, session_id, **kwargs) -> "HaobaiVerifyAgent":
+    async def create(cls, **kwargs) -> "Manus":
+        """Factory method to create and properly initialize a Manus instance."""
+        instance = cls(**kwargs)
+        await instance.initialize_mcp_servers()
+        instance._initialized = True
+        return instance
+
+    @classmethod
+    async def create_with_session_id(cls, session_id, **kwargs):
         """Factory method to create and properly initialize a Manus instance."""
         instance = cls(**kwargs)
         instance.session_id = session_id
+        ask_human_with_api = AskHumanWithApi()
+        ask_human_with_api.session_id = instance.session_id
+        instance.available_tools = Field(
+            default_factory=lambda: ToolCollection(
+                GetUseMovieOrderInfo(),
+                ReturnUserPhoneNumberExecute(),
+                PythonExecute(),  # 执行python代码
+                BrowserUseTool(),  # 网页交互工具
+                StrReplaceEditor(),  # 支持沙箱功能的文件与目录操作工具
+                ask_human_with_api,  # 寻求人类帮助
+                Terminate(),
+            )
+        )
         await instance.initialize_mcp_servers()
         instance._initialized = True
         return instance

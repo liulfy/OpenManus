@@ -8,7 +8,7 @@ from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.tool import Terminate, ToolCollection
-from app.tool.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
+from business_scene.haobai.api_114.get_user_movie_order_info_execute import GetUseMovieOrderInfo
 from app.tool.ask_human import AskHuman
 from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool

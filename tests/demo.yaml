@@ -1,0 +1,161 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: cosyvoice2
+  namespace: audio-text-service
+  labels:
+    js.itpaas/injected: 'true'
+  annotations:
+    deployment.kubernetes.io/revision: '10'
+    kubesphere.io/creator: zhoulongfei1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cosyvoice2
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: cosyvoice2
+      annotations:
+        kubesphere.io/creator: zhoulongfei1
+        kubesphere.io/restartedAt: '2026-02-03T06:43:35.828Z'
+    spec:
+      volumes:
+        - name: volume-ni63o2
+          persistentVolumeClaim:
+            claimName: inference-uat-618-modelpath-pvc
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        - name: ascend-driver
+          hostPath:
+            path: /usr/local/Ascend/driver
+            type: ''
+        - name: ascend-add-ons
+          hostPath:
+            path: /usr/local/Ascend/add-ons
+            type: ''
+        - name: npu
+          hostPath:
+            path: /usr/local/bin/npu-smi
+            type: ''
+      containers:
+        - name: cosyvoice2
+          image: 'reg.telecomjs.com/audio-text-service/cann8.2:v4'
+          command:
+            - /bin/bash
+            - '-c'
+            - while true; do sleep 3600; done
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: MY_NODE_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: MY_POD_CLUSTER
+              value: js-itpaas-ctcloud-aipro
+            - name: CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.cpu
+                  divisor: '0'
+            - name: CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+                  divisor: '0'
+            - name: MEMORY_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  resource: requests.memory
+                  divisor: '0'
+            - name: MEMORY_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+                  divisor: '0'
+            - name: TZ
+              value: Asia/Shanghai
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: none
+          resources:
+            limits:
+              cpu: '16'
+              ephemeral-storage: 48Gi
+              huawei.com/Ascend310P: '1'
+              memory: 48Gi
+            requests:
+              cpu: '16'
+              ephemeral-storage: 48Gi
+              huawei.com/Ascend310P: '1'
+              memory: 48Gi
+          volumeMounts:
+            - name: volume-ni63o2
+              mountPath: /zlf
+            - name: shm
+              mountPath: /dev/shm
+            - name: ascend-driver
+              mountPath: /usr/local/Ascend/driver
+            - name: ascend-add-ons
+              mountPath: /usr/local/Ascend/ascend-add-ons
+            - name: npu
+              mountPath: /usr/local/bin/npu-smi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              drop:
+                - SETPCAP
+                - SETFCAP
+                - SYS_CHROOT
+                - AUDIT_WRITE
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      dnsPolicy: ClusterFirst
+      serviceAccountName: default
+      serviceAccount: default
+      securityContext: {}
+      imagePullSecrets:
+        - name: audio-text-service-secret
+      schedulerName: default-scheduler
+      tolerations:
+        - key: vgpu
+          operator: Equal
+          value: test
+          effect: NoSchedule
+        - key: user
+          operator: Equal
+          value: mss
+          effect: NoSchedule
+      enableServiceLinks: false
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600

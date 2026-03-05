@@ -1,7 +1,7 @@
 
 import asyncio
 
-from app.agent.manus import Manus
+from app.agent.manus_back.manus import Manus
 from app.logger import logger
 
 
