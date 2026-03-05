@@ -1,7 +1,8 @@
 import argparse
 import asyncio
 
-from app.agent.manus_back.manus import Manus
+# from app.agent.manus_back.manus import Manus
+from business_scene.haobai.hospital.hospital_match_agent import HospitalManus
 from app.logger import logger
 
 
@@ -16,7 +17,7 @@ async def main():
     args = parser.parse_args()
 
     # Create and initialize Manus agent
-    agent = await Manus.create()
+    agent = await HospitalManus.create()
     try:
         # Use command line prompt if provided, otherwise ask for input
         prompt = args.prompt if args.prompt else input("Enter your prompt: ")

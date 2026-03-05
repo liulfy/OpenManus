@@ -6,7 +6,8 @@ import time
 from typing import Tuple, Optional
 import asyncio
 
-from app.agent.manus_back.manus import Manus
+# from app.agent.manus_back.manus import Manus
+from business_scene.haobai.hospital.hospital_match_agent import HospitalManus
 from server.enhanced_server.global_mq import (global_server_msg_dict, set_agent_status, get_agent_status, clear_agent_status,
                                               client_lock, set_reply_permission, get_reply_permission, clear_reply_permission,
                                               END_MARK, EXIT_CMD, ENCODING, global_client_msg_dict
@@ -130,7 +131,7 @@ def send_http_response(conn: socket.socket, body: str):
 
 # 这是客户端向服务端发送信息
 async def run_recv_thread(session_id, conn: socket.socket, state: ConnectionState):
-    agent = await Manus.create_with_session_id(session_id)
+    agent = await HospitalManus.create_with_session_id(session_id)
     while state.is_connected():
         request_data = b''
         while state.is_connected():
