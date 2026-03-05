@@ -7,6 +7,7 @@ from app.tool.python_execute import PythonExecute
 from app.tool.str_replace_editor import StrReplaceEditor
 from business_scene.haobai.hospital.hospital_match_execute import HospitalDepartmentMatchExecute
 from pydantic import Field
+from business_scene.haobai.hospital.hospital_prompts import project_prompt
 
 
 # 示例：自定义子类，调整available_tools
@@ -26,3 +27,4 @@ class HospitalManus(BaseManus):
             Terminate(),
         )
     )
+

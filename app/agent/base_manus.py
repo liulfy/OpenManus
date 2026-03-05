@@ -25,6 +25,7 @@ class BaseManus(ToolCallAgent, ABC):
 
     system_prompt: str = SYSTEM_PROMPT.format(directory=config.workspace_root)
     next_step_prompt: str = NEXT_STEP_PROMPT
+    business_system_prompt: str = ""
 
     max_observe: int = 10000
     max_steps: int = 20
@@ -181,6 +182,12 @@ class BaseManus(ToolCallAgent, ABC):
 
         return result
 
+    async def run(self, request: Optional[str] = None) -> str:
+        if request:
+            request = self.business_system_prompt + request
+        return await super().run(request)
+
+
 
 # 示例2：扩展默认工具（不覆盖，而是在创建实例时添加）
 async def create_extended_manus():
@@ -211,3 +218,4 @@ async def create_custom_session_manus(session_id):
     # 动态添加工具
     manus.available_tools.add_tool(BrowserUseTool())
     return manus
+
