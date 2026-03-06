@@ -15,7 +15,7 @@ class HospitalManus(BaseManus):
     """自定义Manus子类，修改可用工具集合"""
     name: str = "HospitalManus"
     description: str = "A versatile agent that can solve various tasks using multiple tools including MCP-based tools"
-    business_system_prompt = project_prompt
+    business_system_prompt: str = project_prompt
 
     # 覆盖默认的available_tools，只保留Python执行和终止工具
     available_tools: ToolCollection = Field(
