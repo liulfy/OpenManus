@@ -4,14 +4,14 @@ from io import StringIO
 from typing import Dict
 
 from app.tool.base import BaseTool
-from business_scene.haobai.hospital.hoapital_match_tool import query_result
+from business_scene.haobai.hospital.index_match_tool import query_result
 
 
-class HospitalDepartmentMatchExecute(BaseTool):
-    """A tool for match the corresponding hospital department according to user's query with timeout and safety restrictions."""
+class DepartmentIndexMatchExecute(BaseTool):
+    """A tool for match the corresponding department index according to user's query with timeout and safety restrictions."""
 
-    name: str = "hospital_department_match_execute"
-    description: str = "根据用户的请求判断对应的科室. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results."
+    name: str = "department_index_match_execute"
+    description: str = "根据输入匹配对应的科室编码. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results."
     parameters: dict = {
         "type": "object",
         "properties": {
