@@ -11,10 +11,7 @@ def query_result(user_query = "骨科"):
     user_embedding = np.array(user_embedding)
     dot_result = department_vectors.dot(user_embedding)
     max_pos = np.argmax(dot_result)
-    return department_names[max_pos]
-
-
-
+    return department_names[max_pos] + str(100001 + max_pos)
 
 
 
