@@ -1,34 +1,32 @@
+
+
 import multiprocessing
 import sys
 from io import StringIO
 from typing import Dict
 
 from app.tool.base import BaseTool
-from business_scene.haobai.hospital.department_match_with_embedding.index_match_tool import query_result
+from business_scene.haobai.hospital.hospital_prompts import candidate_wording
+import random
 
 
-class DepartmentIndexMatchExecute(BaseTool):
-    """A tool for match the corresponding department index according to user's query with timeout and safety restrictions."""
+class HandlingEscalationToLiveAgentsExecute(BaseTool):
+    """A tool for match the corresponding hospital department according to user's query with timeout and safety restrictions."""
 
-    name: str = "department_index_match_execute"
-    description: str = "根据输入匹配对应的科室编码. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results."
+    name: str = "handling_escalation_to_live_agents_execute"
+    description: str = "处理用户直接转人工的情况. Note: Only print outputs are visible, function return values are not captured. Use print statements to see results."
     parameters: dict = {
         "type": "object",
-        "properties": {
-            "user_query": {
-                "type": "string",
-                "description": "The user query.",
-            },
-        },
-        "required": ["user_query"],
+        "properties": {},
+        "required": [],
     }
 
-    def _run_code(self, user_query: str, result_dict: dict):
+    def _run_code(self, result_dict: dict):
         original_stdout = sys.stdout
         try:
             output_buffer = StringIO()
             sys.stdout = output_buffer
-            result_dict["observation"] = query_result(user_query)
+            result_dict["observation"] = random.choice(candidate_wording['转人工'])
             result_dict["success"] = True
         except Exception as e:
             result_dict["observation"] = str(e)
@@ -38,14 +36,12 @@ class DepartmentIndexMatchExecute(BaseTool):
 
     async def execute(
         self,
-        user_query: str,
         timeout: int = 5,
     ) -> Dict:
         """
         Executes the provided Python code with a timeout.
 
         Args:
-            user_query (str): The user's query.
             timeout (int): Execution timeout in seconds.
 
         Returns:
@@ -55,7 +51,7 @@ class DepartmentIndexMatchExecute(BaseTool):
         with multiprocessing.Manager() as manager:
             result = manager.dict({"observation": "", "success": False})
             proc = multiprocessing.Process(
-                target=self._run_code, args=(user_query, result)
+                target=self._run_code, args=(result, )
             )
             proc.start()
             proc.join(timeout)
@@ -69,3 +65,4 @@ class DepartmentIndexMatchExecute(BaseTool):
                     "success": False,
                 }
             return dict(result)
+

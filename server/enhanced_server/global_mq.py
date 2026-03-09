@@ -14,7 +14,7 @@ QUEUE_MAXSIZE = 0                # 全局队列最大容量，0表示无限制
 global_msg_queue = queue.Queue(maxsize=QUEUE_MAXSIZE)
 
 ## todo new
-from multiprocessing import Manager
+# from multiprocessing import Manager
 from queue import Queue
 
 class GlobalDict:
