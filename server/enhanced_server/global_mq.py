@@ -25,8 +25,10 @@ class GlobalDict:
         self.cross_process_safe_map = {}
 
     def get(self, session_id):
-        return self.cross_process_safe_map[session_id]
-
+        if session_id in self.cross_process_safe_map.keys():
+            return self.cross_process_safe_map[session_id]
+        else:
+            return None
     def initialize_queue(self, session_id):
         this_queue = Queue()
         self.cross_process_safe_map.__setitem__(session_id, this_queue)
@@ -42,10 +44,17 @@ class GlobalDict:
     def cleanup(self, session_id):
         self.cross_process_safe_map.pop(session_id)
 
+    def print_session_id(self):
+        print(f"queue list: {len(self.cross_process_safe_map)}")
+        for session_id in self.cross_process_safe_map.keys():
+            print(session_id)
+
 # 这个存放的是直接输出出去给到用户的数据
 global_server_msg_dict = GlobalDict()
 # 这个存放的是客户端输入进来的数据
 global_client_msg_dict = GlobalDict()
+# 这个是存放全局manus对象的数据 {"id_mark": "b3e4a2f5-8-17c-4bd2-bc49-d5a60ebcfe49", "manus": ManusObject, "human_msg": "骨科"}
+global_manus_obj_dict = GlobalDict()
 
 # 客户端应答权限映射表：{客户端ID: 是否允许应答}，线程安全
 client_reply_permission: Dict[int, bool] = {}

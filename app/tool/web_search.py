@@ -13,7 +13,7 @@ from app.tool.search import (
     BaiduSearchEngine,
     BingSearchEngine,
     DuckDuckGoSearchEngine,
-    GoogleSearchEngine,
+#    GoogleSearchEngine,
     WebSearchEngine,
 )
 from app.tool.search.base import SearchItem
@@ -191,7 +191,7 @@ class WebSearch(BaseTool):
         "required": ["query"],
     }
     _search_engine: dict[str, WebSearchEngine] = {
-        "google": GoogleSearchEngine(),
+        #"google": GoogleSearchEngine(),
         "baidu": BaiduSearchEngine(),
         "duckduckgo": DuckDuckGoSearchEngine(),
         "bing": BingSearchEngine(),

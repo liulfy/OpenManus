@@ -82,8 +82,8 @@ class ToolCallAgent(ReActAgent):
 
         # Log response info
         thoughts_data = f"thoughts: {content}"
-        msg_queue = global_server_msg_dict.get(self.session_id)
-        msg_queue.put(thoughts_data)
+        # msg_queue = global_server_msg_dict.get(self.session_id)
+        # msg_queue.put(thoughts_data)
         # global_msg_queue.put(f"{self.session_id}:{thoughts_data}")
         # golbal_dict.add_data(thoughts_data)
         logger.info(f"✨ {self.name}'s {thoughts_data}") # todo 需要输出
@@ -92,7 +92,8 @@ class ToolCallAgent(ReActAgent):
         )
         if tool_calls:
             tool_data = f"🧰 Tools being prepared: {[call.function.name for call in tool_calls]}\nTool arguments: {tool_calls[0].function.arguments}"
-            msg_queue.put(tool_data)
+            logger.info(f"Tool data msg is: {tool_data}")
+            # msg_queue.put(tool_data)
             # global_msg_queue.put(f"{self.session_id}:{tool_data}")
             # golbal_dict.add_data(tool_data)
             logger.info(
@@ -160,8 +161,8 @@ class ToolCallAgent(ReActAgent):
                 result = result[: self.max_observe]
 
             tool_log_data = f"🎯 Tool '{command.function.name}' completed its mission! Result: {result}"
-            msg_queue = global_server_msg_dict.get(self.session_id)
-            msg_queue.put(tool_log_data)
+            # msg_queue = global_server_msg_dict.get(self.session_id)
+            # msg_queue.put(tool_log_data)
             # golbal_dict.add_data(tool_log_data)
             logger.info(
                  tool_log_data # todo 需要输出，这里是工具输出的结果

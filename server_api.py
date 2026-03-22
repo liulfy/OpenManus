@@ -173,6 +173,7 @@ async def run_recv_thread(session_id, conn: socket.socket, state: ConnectionStat
 
         agent_running = get_agent_status(session_id)
         if not agent_running:
+            print(f"\n启动智能体时，客户端发送的消息是: --------------------------{client_msg}")
             t = threading.Thread(target=run_agent, args = (agent, client_msg,), daemon=True)
             # 启动线程：核心，后台任务开始执行，主程序不等待
             t.start()
