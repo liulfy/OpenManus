@@ -76,6 +76,8 @@ class BaseManus(ToolCallAgent, ABC):
         ask_human_with_api = AskHumanWithApi()
         ask_human_with_api.session_id = instance.session_id
         instance.available_tools.add_tool(ask_human_with_api)
+        transfer_to_relevant_department_tool = instance.available_tools.get_tool('transfer_to_relevant_department')
+        transfer_to_relevant_department_tool.session_id = session_id
         await instance.initialize_mcp_servers()
         instance._initialized = True
         print(f"instance id is {instance.session_id}")
