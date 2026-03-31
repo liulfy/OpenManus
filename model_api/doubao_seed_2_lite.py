@@ -23,6 +23,7 @@ def query_doubao(query_clause, max_tokens = 150):
             },
         ],
         "model": "doubao-seed-2-0-lite-260215",
+        # "model": "doubao-seed-2-0-pro-260215",
         "thinking": {
             "type": "disabled"
         },

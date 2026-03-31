@@ -50,7 +50,7 @@ url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 # 请求头，对应 curl 中的 -H 参数
 headers = {
     "Content-Type": "application/json",
-    "Authorization": "Bearer 4d70bef1-fd38-4b0d-9978-7ef7e7b079e8"
+    "Authorization": "Bearer 2c3c4529-82ae-44fa-8ae0-66e2fea16cd8"
 }
 
 import requests
@@ -84,6 +84,7 @@ def query_result(user_query = "骨科"):
     )
 
     response_result = response.json()
+    print(response_result)
     result = response_result['choices'][0]['message']['content']
     return result
 

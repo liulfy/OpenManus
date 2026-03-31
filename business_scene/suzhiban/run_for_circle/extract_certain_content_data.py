@@ -1,6 +1,6 @@
 
 import pandas as pd
-from business_scene.suzhiban.info_extractor import wash_pending_content
+from business_scene.suzhiban.back.info_extractor import wash_pending_content
 
 
 df = pd.read_excel("12月清单.xlsx", engine="openpyxl")

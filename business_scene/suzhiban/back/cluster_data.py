@@ -54,14 +54,14 @@ def summarize_data(input_df):
         pending_content = row_data['抽取内容']
         to_assign = row_data['主单是否下派']
         content_2 = row_data['二级目录']
-        if content_2 == "关停不认可": # 这个自己去改
+        if content_2 == "省自定2": # 这个自己去改
             piece_prompt = f"投诉内容：{pending_content}，是否下派：{to_assign}\n"
             prompt += piece_prompt
     return prompt
 
 from model_api.doubao_seed_2_lite import query_doubao
 
-df = pd.read_excel("12月清单抽取_关停不认可_2000_5000.xlsx", engine="openpyxl")
+df = pd.read_excel("12月清单抽取_省自定_2000_5000.xlsx", engine="openpyxl")
 
 prompt = summarize_data(df)
 result = query_doubao(prompt, 100000)
