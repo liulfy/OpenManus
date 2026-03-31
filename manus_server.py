@@ -34,6 +34,7 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message]
     temperature: Optional[float] = 0.7
     stream: Optional[bool] = False
+    variables: dict = {}
 
 def run_agent(agent, client_msg):
     asyncio.run(async_run_agent(agent, client_msg))
