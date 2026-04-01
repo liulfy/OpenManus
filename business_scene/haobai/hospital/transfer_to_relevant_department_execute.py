@@ -26,7 +26,7 @@ class TransferToRelevantDepartmentExecute(BaseTool):
         designated_reply = 'event: fastAnswer\ndata: {"id":"","object":"","created":0,"model":"","choices":[{"delta": {"role":"assistant","content":"已查询到对应科室，正在为您转接人工，请稍后。"},"index":0,"finish_reason":null}]}\n\n'
         global_server_msg_dict.add_data(self.session_id, designated_reply)
         department_name = {"_departName": department_number}
-        confirm = {"_confirm":"True"}
+        confirm = {"_departName": department_number, "_confirm":"True"}
         transfer_info = f'event: updateVariables\ndata: {json.dumps(department_name, ensure_ascii=False)}\n\nevent: updateVariables\ndata: {json.dumps(confirm, ensure_ascii=False)}\n\nevent: answer\ndata: [DONE]\n\n'
         global_server_msg_dict.add_data(self.session_id, transfer_info)
         return None
