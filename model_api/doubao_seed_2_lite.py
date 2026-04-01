@@ -14,7 +14,7 @@ headers = {
 }
 
 # 请求体，对应 curl 中的 -d 参数
-def query_doubao(query_clause, max_tokens = 150):
+def query_doubao(query_clause, max_tokens = 150, tools = []):
     data = {
         "messages": [
             {
@@ -27,6 +27,7 @@ def query_doubao(query_clause, max_tokens = 150):
         "thinking": {
             "type": "disabled"
         },
+        "tools": tools,
         "max_tokens": max_tokens
     }
 
