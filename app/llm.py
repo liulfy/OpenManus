@@ -729,6 +729,7 @@ class LLM:
                 )
 
             params["stream"] = False  # Always use non-streaming for tool requests
+            params['extra_body'] = {"caching": {"type": "enabled", "prefix": True}, "thinking": {"type": "disabled"}}
             response: ChatCompletion = await self.client.chat.completions.create(
                 **params
             )

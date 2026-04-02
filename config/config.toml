@@ -1,6 +1,7 @@
 # Global LLM configuration
 [llm]
-model = "doubao-1-5-pro-32k-250115"       # The LLM model to use
+#model = "doubao-1-5-pro-32k-250115"       # The LLM model to use
+model = "doubao-seed-2-0-lite-260215"       # The LLM model to use
 base_url = "https://ark.cn-beijing.volces.com/api/v3/" # API endpoint URL
 #base_url = "http://132.228.185.71:9000/volceshttp/" # inside endpoint URL
 #api_key = "4d70bef1-fd38-4b0d-9978-7ef7e7b079e8"                   # Your API key

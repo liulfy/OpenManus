@@ -73,7 +73,8 @@ def query_result(user_query = "骨科"):
         "model": "doubao-seed-2-0-lite-260215",
         "thinking": {
             "type": "disabled"
-        }
+        },
+        "caching": {"type": "enabled", "prefix": True}
     }
 
     response = requests.post(
