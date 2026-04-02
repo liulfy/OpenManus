@@ -24,6 +24,7 @@ class ToolCallAgent(ReActAgent):
 
     system_prompt: str = SYSTEM_PROMPT
     next_step_prompt: str = NEXT_STEP_PROMPT
+    business_system_prompt: str = ""
 
     available_tools: ToolCollection = ToolCollection(
         CreateChatCompletion(), Terminate()
@@ -50,7 +51,7 @@ class ToolCallAgent(ReActAgent):
             response = await self.llm.ask_tool(
                 messages=self.messages,
                 system_msgs=(
-                    [Message.system_message(self.system_prompt)]
+                    [Message.system_message(self.system_prompt + self.business_system_prompt)]
                     if self.system_prompt
                     else None
                 ),

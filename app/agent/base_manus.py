@@ -25,7 +25,7 @@ class BaseManus(ToolCallAgent, ABC):
 
     system_prompt: str = SYSTEM_PROMPT.format(directory=config.workspace_root)
     next_step_prompt: str = NEXT_STEP_PROMPT
-    business_system_prompt: str = ""
+
 
     max_observe: int = 10000
     max_steps: int = 20
@@ -186,7 +186,8 @@ class BaseManus(ToolCallAgent, ABC):
 
     async def run(self, request: Optional[str] = None) -> str:
         if request:
-            request = self.business_system_prompt + request
+            request = request
+            # request = self.business_system_prompt + request
         return await super().run(request)
 
 
