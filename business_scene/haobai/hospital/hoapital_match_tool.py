@@ -31,7 +31,7 @@ system_prompt = f"""
 
 ## 推荐科室
 
-1. **科室名称** - 地址
+1. **科室名称** 
 
 # 注意事项
 
@@ -73,7 +73,8 @@ def query_result(user_query = "骨科"):
         "model": "doubao-seed-2-0-lite-260215",
         "thinking": {
             "type": "disabled"
-        }
+        },
+        "max_tokens": 150
     }
 
     response = requests.post(
