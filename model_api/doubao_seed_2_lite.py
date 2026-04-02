@@ -28,7 +28,8 @@ def query_doubao(query_clause, max_tokens = 150, tools = []):
             "type": "disabled"
         },
         "tools": tools,
-        "max_tokens": max_tokens
+        "max_tokens": max_tokens,
+        "caching": {"type": "enabled", "prefix": True}
     }
 
     # 发送 POST 请求
