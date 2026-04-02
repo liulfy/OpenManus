@@ -31,7 +31,7 @@ system_prompt = f"""
 
 ## 推荐科室
 
-1. **科室名称** - 地址
+1. **科室名称** 
 
 # 注意事项
 
@@ -74,7 +74,8 @@ def query_result(user_query = "骨科"):
         "thinking": {
             "type": "disabled"
         },
-        "caching": {"type": "enabled", "prefix": True}
+        "caching": {"type": "enabled", "prefix": True},
+        "max_tokens": 150
     }
 
     response = requests.post(
