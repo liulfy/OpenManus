@@ -216,7 +216,7 @@ class SandboxBrowserTool(SandboxToolsBase):
             response = self.sandbox.process.exec(curl_cmd, timeout=30)
             if response.exit_code == 0:
                 try:
-                    result = json.loads(response.result)
+                    result = json.loads(response.inference_result)
                     result.setdefault("content", "")
                     result.setdefault("role", "assistant")
                     if "screenshot_base64" in result:
