@@ -1,5 +1,5 @@
 
-from model_api.doubao_seed_2_lite import query_doubao
+from model_api.doubao_seed_2_lite import query_doubao_stream
 
 def judge_assign_or_not(feature_prompt, user_complaint, reason = False):
     if reason:
@@ -15,7 +15,7 @@ def judge_assign_or_not(feature_prompt, user_complaint, reason = False):
     用户投诉如下：
     {user_complaint}
     """
-    return query_doubao(judge_assign_prompt, 200)
+    return query_doubao_stream(judge_assign_prompt, 200, "enabled")
 
 
 def select_bad_case(judge_result, pred_label_index = 4, truth_label_index = 5):
@@ -38,12 +38,46 @@ def select_bad_case(judge_result, pred_label_index = 4, truth_label_index = 5):
 
 
 def judge_whether_sales(complaint_content):
-    user_prompt = "请判断输入的内容，是否针对运营商销售品（包括且不限于流量、语音包、权益、云盘会员、礼包）违约金进行投诉的。" \
-                  "请注意，投诉内容中必须提及销售品名称，并明确表示对该销售品的违约金不认可。" \
-                  "你只需要输出'是'或者'否'，不需要进行解释。\n输入内容为：\n\n\n{complaint_content}"
+    user_prompt = "请判断输入的内容，是否针对运营商销售品（包括且不限于流量、语音包、权益、云盘会员、礼包）违约金/否认订购进行投诉的。" \
+                  "请注意，投诉内容中必须提及销售品名称，并明确表示对该销售品的违约金不认可，或者否认订购该销售品。" \
+                  "如果是的，请你输出销售品名称。如果不是，请你'否'。你不需要输出其它任何内容，不需要进行解释。\n输入内容为：\n\n\n{complaint_content}"
     prompt = user_prompt.format(complaint_content = complaint_content)
-    judge_result = query_doubao(prompt)
+    judge_result = query_doubao_stream(prompt)
     if "否" in judge_result:
         return 0
-    return 1
+    return judge_result
+
+
+
+def front_complaint(complaint_content):
+    user_prompt = f"""
+    你是一个智能客服投诉助手，请判断用户的投诉内容是否在以下内容中。
+    你只需要输出'是'或者'否'，不需要进行解释。
+    判断内容为：
+    客户登记赠送免费 /**G 流量
+    电信机房、设备相关问题
+    营业厅业务办理问题：业务漏受理、办理差错、解释说明不清
+    接到 10000 号营销电话争议（剔除外呼工号 30839、38开头、36、31、30开头派省层面）
+    政企客户对本金 + 滞纳金欠费不认可
+    涉及营业厅、装维、线下门店相关投诉问题
+    网络质量类：网速慢、信号差、网络不稳定
+    含智慧家 / 智家 / ACAP / 面板 / 终端 / 中屏 / 门锁 / 子母路由 / 银行保证 / CFQ / 橙分期的否认办业务、违约金争议
+    涉及宽带及路由器安装咨询、投诉
+    固话 / 宽带 /iTV/ 手机无法正常使用（断网、故障、宽带网速异常等）
+    固话号码二次放号相关问题
+    要求取消 VPN 业务
+    
+    
+    用户投诉内容为：
+    {complaint_content}
+    """
+    prompt = user_prompt.format(complaint_content=complaint_content)
+    judge_result = query_doubao_stream(prompt)
+    if "否" in judge_result:
+        return "无法判断"
+    return "下派"
+
+
+
+
 

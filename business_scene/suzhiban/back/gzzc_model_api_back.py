@@ -43,7 +43,7 @@ tools = [
     }
 ]
 
-from business_scene.suzhiban.gzzc_coze.dispatch_tool import dispatch_judgment, system_prompt
+from business_scene.suzhiban.back.gzzc_coze.dispatch_tool import dispatch_judgment, system_prompt
 import json
 user_prompt = "中通服网盈科技有限公司南京分公司@东山觅秀路直管营业厅;11244469;客户原本每月189元，后来被线上更改套餐，因其电话沟通机主与其家人说辞不一致，机主要求退回套餐，对方已告知价格不变的情况下11月查询每月多了20元，现在是209元，是主卡号码客户原本的随心选没有退订反而增加了第二个随心选业务，现在要求退订第二个随心选并退费，未竣工智家尽快撤单"
 

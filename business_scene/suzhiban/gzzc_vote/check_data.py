@@ -1,6 +1,6 @@
 
 
-from model_api.doubao_seed_2_lite import query_doubao
+from model_api.doubao_seed_2_lite import query_doubao_stream
 
 def judge_assign_or_not(complaint_content, feature):
     judge_assign_prompt = f"""依据投诉单下派与不下派的共性特征，判定该投诉内容是否需要下派。若依据给定特征无法确定，输出 “无法判断”。仅输出：下派 / 不下派 / 无法判断，无需其他任何信息。
@@ -9,12 +9,9 @@ def judge_assign_or_not(complaint_content, feature):
 ---
 投诉内容为：{complaint_content}
 """
-    return query_doubao(judge_assign_prompt, 200, [], "disabled")
-
-
+    return query_doubao_stream(judge_assign_prompt, 200, "enabled")
 
 import threading
-from business_scene.suzhiban.gzzc_vote.cluster_data import updated_gzzc_rule as gzzc_rule
 
 def run_single_inference(rule, complaint_content, result_save, index):
     # result_save[index] = judge_assign_or_not(complaint_content, rule)
@@ -38,39 +35,27 @@ def run_inference(rules, complaint_content):
     t1.join()
     t2.join()
     t3.join()
-    return result
-
-def run_row_data(df, gzzc_rule, result, start_index, end_index):
-    for i in range(start_index, end_index):
-        row_data = df.iloc[i]
-        identity_num = row_data['受理单号']
-        content_1 = row_data['一级目录']
-        pending_content = row_data['受理内容']
-        extract_content = row_data['抽取内容']
-        to_assign = row_data['主单是否下派']
-        inference_result = run_inference(gzzc_rule, extract_content)
-        local_result = [identity_num, content_1, pending_content, extract_content, to_assign]
-        local_result.extend(inference_result)
-        print(f"index: {i}, end: {end_index}, true: {to_assign}, result: {inference_result}")
-        result[i] = local_result
+    return analysis_result(result[0], result[1], result[2])
+    # return result
 
 
-import pandas as pd
-df = pd.read_excel("data_save/12月清单_规则政策类_10000.xlsx", engine="openpyxl")
-data_size = len(df)
+while 0:
+    import pandas as pd
+    df = pd.read_excel("data_save/12月清单_规则政策类_10000.xlsx", engine="openpyxl")
+    data_size = len(df)
 
-result = [[] for _ in range(data_size)]
-indices = [0, 129, 258, 387, 516]
-# indices = [0, 25, 50, 75, 100]
-thread_pool = []
-for i in range(4):
-    t = threading.Thread(target=run_row_data, args=(df, gzzc_rule, result, indices[i],indices[i+1],))
-    thread_pool.append(t)
+    result = [[] for _ in range(data_size)]
+    indices = [0, 129, 258, 387, 516]
+    # indices = [0, 25, 50, 75, 100]
+    thread_pool = []
+    for i in range(4):
+        t = threading.Thread(target=run_row_data, args=(df, gzzc_rule, result, indices[i],indices[i+1],))
+        thread_pool.append(t)
 
-for t in thread_pool:
-    t.start()
-for t in thread_pool:
-    t.join()
+    for t in thread_pool:
+        t.start()
+    for t in thread_pool:
+        t.join()
 
 while 0: # 挂了重跑
     for row_data in result:
@@ -101,7 +86,15 @@ def analysis_result(a, b, c):
         # return "无法判断"
         return "不下派"
 
-def analysis_data(result):
+
+def analysis_result(a, b, c):
+    if a != "无法判断":
+        return a
+    if b != "无法判断":
+        return b
+    return c
+
+def analysis_data(result, append = False):
     unmatch_result = []
     FN_result = []
     FT_result = []
@@ -109,8 +102,10 @@ def analysis_data(result):
     # data_size = 100
     for index in range(data_size):
         row_data = result[index]
-        inference_label = analysis_result(row_data[5], row_data[6], row_data[7])
-        true_label = row_data[4]
+        if not row_data:
+            continue
+        inference_label = analysis_result(row_data[6], row_data[7], row_data[8])
+        true_label = row_data[5]
         if "无法判断" == inference_label:
             unmatch_result.append(index)
         else:
@@ -120,25 +115,28 @@ def analysis_data(result):
             else:
                 if "不下派" not in inference_label:
                     FT_result.append(index)
+        if append:
+            row_data.append(inference_label)
     return unmatch_result, FN_result, FT_result
 
-unmatch_result, FN_result, FT_result = analysis_data(result)
 
 
+while 0:
+    unmatch_result, FN_result, FT_result = analysis_data(result)
 
-new_df = pd.DataFrame(result, columns=["受理单号", "一级目录", "受理内容", "抽取内容", "主单是否下派", "gemini_result", "doubao_result", "deepseek_result"])
+    new_df = pd.DataFrame(result, columns=["受理单号", "一级目录", "受理内容", "抽取内容", "主单是否下派", "gemini_result", "doubao_result", "deepseek_result"])
 
 
-new_df.to_excel("12月清单_规则政策类_10000_推理结果_v2.xlsx", index=False, engine="openpyxl")
+    new_df.to_excel("12月清单_规则政策类_10000_推理结果_v2.xlsx", index=False, engine="openpyxl")
 
-df = pd.read_excel("12月清单_规则政策类_10000_推理结果.xlsx", engine="openpyxl")
-result = []
-data_size = len(df)
-for i in range(data_size):
-    local_result = df.iloc[i].to_list()
-    local_result.append(analysis_result(local_result[-1], local_result[-2], local_result[-3]))
-    result.append(local_result)
+    df = pd.read_excel("12月清单_规则政策类_10000_推理结果.xlsx", engine="openpyxl")
+    result = []
+    data_size = len(df)
+    for i in range(data_size):
+        local_result = df.iloc[i].to_list()
+        local_result.append(analysis_result(local_result[-1], local_result[-2], local_result[-3]))
+        result.append(local_result)
 
-new_df = pd.DataFrame(result, columns=["受理单号", "一级目录", "受理内容", "抽取内容", "主单是否下派", "gemini_result", "doubao_result", "deepseek_result", "inference_result"])
-new_df.to_excel("12月清单_规则政策类_10000_推理结果_result.xlsx", index=False, engine="openpyxl")
+    new_df = pd.DataFrame(result, columns=["受理单号", "一级目录", "受理内容", "抽取内容", "主单是否下派", "gemini_result", "doubao_result", "deepseek_result", "inference_result"])
+    new_df.to_excel("12月清单_规则政策类_10000_推理结果_result.xlsx", index=False, engine="openpyxl")
 
