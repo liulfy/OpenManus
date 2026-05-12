@@ -1,7 +1,7 @@
 
 import pandas as pd
 import threading
-from business_scene.suzhiban.back.info_extractor import wash_pending_content, split_thread_data
+from business_scene.suzhiban.utils.info_extractor import wash_pending_content, split_thread_data
 
 file_name = "business_scene/suzhiban/march_run/szb_3月清单.xlsx"
 
@@ -430,10 +430,11 @@ yxfw_rule_set = {
 ###实际推理
 new_df = pd.read_excel("business_scene/suzhiban/march_run/szb_3月_营销服务类.xlsx", engine="openpyxl")
 
-from business_scene.suzhiban.gzzc_vote.check_data import run_inference
+from ignore.szb_back.gzzc_vote.check_data import run_inference
 from business_scene.suzhiban.utils.utils import front_complaint
 from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement
-from business_scene.suzhiban.gzzc_vote.check_data import analysis_data, analysis_result
+from ignore.szb_back.gzzc_vote.check_data import analysis_data
+
 
 def get_result(rough_result):
     if "无法判断" in rough_result:

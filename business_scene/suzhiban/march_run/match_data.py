@@ -19,7 +19,7 @@ data_size = len(merged_result)
 thread_num = 100
 
 import threading
-from business_scene.suzhiban.back.info_extractor import wash_pending_content, split_thread_data
+from business_scene.suzhiban.utils.info_extractor import wash_pending_content, split_thread_data
 
 def run_local_thread(result, df, start_index, end_index):
     for i in range(start_index, end_index):
@@ -106,11 +106,11 @@ df = df.iloc[get_indices]
 
 
 
-from business_scene.suzhiban.gzzc_vote.check_data import run_inference
+from ignore.szb_back.gzzc_vote.check_data import run_inference
 from business_scene.suzhiban.utils.utils import front_complaint
 from business_scene.suzhiban.march_run.sale_apis import run_pipeline
 from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set
-from business_scene.suzhiban.gzzc_vote.check_data import analysis_data, analysis_result
+
 
 def get_result(rough_result):
     if "无法判断" in rough_result:

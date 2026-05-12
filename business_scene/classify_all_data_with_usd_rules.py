@@ -2,7 +2,7 @@
 
 import pandas as pd
 from model_api.doubao_seed_2_lite import query_doubao
-from business_scene.suzhiban.back.info_extractor import wash_pending_content
+from ignore.szb_back.back import wash_pending_content
 
 from business_scene.agg_usd_rules import rules
 
