@@ -80,20 +80,8 @@ def run_goods_judgement(user_complaint):
 #
 #     regionId, prodId = get_sale_info(region, prod_one_desc)
 #     return run_pipeline(complaint_sale, accNum, regionId, prodId)
-from business_scene.suzhiban.utils.utils import find_closest_string_list
 from business_scene.suzhiban.goods_judgement.rules import *
-
-
-def judge_whether_contain_product(product, product_list):
-    prompt = f"请判断输入的产品是否在给到的产品列表中。请注意，输入的产品可能会存在拼写错误，拼写不规范等问题，只要表达的意思完全匹配，即认为匹配。" \
-             f"如果没有匹配上，请输出'不匹配'。如果匹配上了，请输出列表中标准的产品名称。" \
-             f"你不需要输出其它任何字符" \
-             f"输入的产品列表为：{product_list}" \
-             f"\n\n输入的产品为：{product}"
-    res = query_doubao_stream(prompt, 50, 'enable')
-    if '不匹配' in res:
-        return 0
-    return find_closest_string_list(res, product_list)
+from business_scene.suzhiban.utils.utils import judge_whether_contain_product
 
 
 def run_goods_judgement_new(complaint_clause, product, region):

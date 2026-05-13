@@ -110,7 +110,7 @@ df = df.iloc[get_indices]
 
 
 from business_scene.check_data import run_inference
-from business_scene.suzhiban.utils.utils import front_complaint
+from business_scene.suzhiban.complaint_judge_front.run_complaint_judge_front_new import front_complaint
 from business_scene.suzhiban.march_run.sale_apis import run_pipeline
 from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set, ktty_rule_set
 
@@ -193,13 +193,6 @@ unmatch_result, FN_result, FT_result = analysis_data(result, True)
 
 new_df = pd.DataFrame(result, columns=['id', '地域', '一级目录', '投诉内容', '抽取内容', "真实标签", "人工规则判断", "销售品判断", "自学习规则判断", "推理标签"])
 new_df.to_excel("szb_3月_开通停用类_推理结果_use.xlsx", index=False, engine="openpyxl")
-
-
-
-
-
-
-
 
 
 

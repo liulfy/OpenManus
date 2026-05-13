@@ -77,9 +77,9 @@ def front_complaint(complaint_content):
     return "下派"
 
 
+
+
 import Levenshtein
-
-
 def find_closest_string(target: str, string_dict: dict) -> str:
     """
     调库计算列文斯顿距离，返回最接近的字符串
@@ -94,3 +94,20 @@ def find_closest_string_list(target: str, string_list: list) -> str:
     """
     # 按距离从小到大排序，取第一个
     return min(string_list, key=lambda s: Levenshtein.distance(target, s))
+
+
+
+from model_api.doubao_seed_2_lite import query_doubao_stream
+
+def judge_whether_contain_product(product, product_list):
+    prompt = f"请判断输入的投诉内容中包含了投诉的产品。请判断投诉产品是否在给到的产品列表中。" \
+             f"请注意，投诉的产品名称可能会存在拼写错误，拼写不规范等问题，只要语义能够匹配，即认为匹配。" \
+             f"如果没有匹配上，请输出'不匹配'。如果匹配上了，请输出列表中标准的产品名称。" \
+             f"你不需要输出其它任何字符" \
+             f"输入的产品列表为：{product_list}" \
+             f"\n\n输入的产品为：{product}"
+    res = query_doubao_stream(prompt, 50, 'enable')
+    if '不匹配' in res:
+        return 0
+    return find_closest_string_list(res, product_list)
+
