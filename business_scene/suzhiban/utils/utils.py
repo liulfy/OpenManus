@@ -1,7 +1,7 @@
-
 from model_api.doubao_seed_2_lite import query_doubao_stream
 
-def judge_assign_or_not(feature_prompt, user_complaint, reason = False):
+
+def judge_assign_or_not(feature_prompt, user_complaint, reason=False):
     if reason:
         reason_prompt = "并说明理由。"
     else:
@@ -18,7 +18,7 @@ def judge_assign_or_not(feature_prompt, user_complaint, reason = False):
     return query_doubao_stream(judge_assign_prompt, 200, "enabled")
 
 
-def select_bad_case(judge_result, pred_label_index = 4, truth_label_index = 5):
+def select_bad_case(judge_result, pred_label_index=4, truth_label_index=5):
     unmatch_result = []
     FN_result = []
     FT_result = []
@@ -41,12 +41,11 @@ def judge_whether_sales(complaint_content):
     user_prompt = "请判断输入的内容，是否针对运营商销售品（包括且不限于流量、语音包、权益、云盘会员、礼包）违约金/否认订购进行投诉的。" \
                   "请注意，投诉内容中必须提及销售品名称，并明确表示对该销售品的违约金不认可，或者否认订购该销售品。" \
                   "如果是的，请你输出销售品名称。如果不是，请你'否'。你不需要输出其它任何内容，不需要进行解释。\n输入内容为：\n\n\n{complaint_content}"
-    prompt = user_prompt.format(complaint_content = complaint_content)
+    prompt = user_prompt.format(complaint_content=complaint_content)
     judge_result = query_doubao_stream(prompt)
     if "否" in judge_result:
         return 0
     return judge_result
-
 
 
 def front_complaint(complaint_content):
@@ -66,8 +65,8 @@ def front_complaint(complaint_content):
     固话 / 宽带 /iTV/ 手机无法正常使用（断网、故障、宽带网速异常等）
     固话号码二次放号相关问题
     要求取消 VPN 业务
-    
-    
+
+
     用户投诉内容为：
     {complaint_content}
     """
@@ -78,6 +77,20 @@ def front_complaint(complaint_content):
     return "下派"
 
 
+import Levenshtein
 
 
+def find_closest_string(target: str, string_dict: dict) -> str:
+    """
+    调库计算列文斯顿距离，返回最接近的字符串
+    """
+    string_list = string_dict.keys()
+    # 按距离从小到大排序，取第一个
+    return min(string_list, key=lambda s: Levenshtein.distance(target, s))
 
+def find_closest_string_list(target: str, string_list: list) -> str:
+    """
+    调库计算列文斯顿距离，返回最接近的字符串
+    """
+    # 按距离从小到大排序，取第一个
+    return min(string_list, key=lambda s: Levenshtein.distance(target, s))

@@ -1,61 +1,64 @@
 
 import pandas as pd
-file_name = "business_scene/suzhiban/march_run/szb_3月清单.xlsx"
-df_a = pd.read_excel(file_name, engine="openpyxl")
-file_name2 = "business_scene/suzhiban/march_run/3月清单.xlsx"
-df_b = pd.read_excel(file_name2, engine="openpyxl")
-
-df_b = df_b.drop('last_self_deal', axis=1)
-
-merged_result = pd.merge(df_b, df_a[['service_order_id', 'last_self_deal']], on='service_order_id', how='inner')
-
-merged_result = merged_result.drop_duplicates(subset=['service_order_id'], keep='first')
-
-
-schema = ['service_order_id', 'accept_date', 'service_type_desc', 'accept_channel_desc', 'accept_content', 'region_name', 'appeal_prod_name', 'appeal_reason_desc', 'appeal_child_desc', 'prod_one_desc', 'prod_two_desc', 'offer_id', 'number_type', 'prod_num_new', 'cust_id', 'pd_inst_id', 'rela_info', 'cust_tp_id', 'insert_time', 'state', 'dispatch_time', 'dispatch_result', 'area_name', 'sub_station_name', 'is_zy', 'process_type', 'process_orgid', 'work_sheetid', 'dy_date', 'last_self_deal']
-schema_size = len(schema)
-
-data_size = len(merged_result)
-thread_num = 100
 
 import threading
 from business_scene.suzhiban.utils.info_extractor import wash_pending_content, split_thread_data
 
-def run_local_thread(result, df, start_index, end_index):
-    for i in range(start_index, end_index):
-        row_data = df.iloc[i]
-        local_result = result[i]
-        for j in range(schema_size):
-            local_result.append(row_data[schema[j]])
-        washed_data = wash_pending_content(row_data['appeal_prod_name'], '', row_data['accept_content'])
-        local_result.append(washed_data)
-        print(f"finish run {i}/{end_index} data")
+while 0:
+    file_name = "business_scene/suzhiban/march_run/szb_3月清单.xlsx"
+    df_a = pd.read_excel(file_name, engine="openpyxl")
+    file_name2 = "business_scene/suzhiban/march_run/3月清单.xlsx"
+    df_b = pd.read_excel(file_name2, engine="openpyxl")
 
-def thread_run(df, run_func, thread_num):
-    data_size = len(df)
-    thread_pool = []
-    thread_indices = split_thread_data(data_size, thread_num)
-    result = [[] for _ in range(data_size)]
-    for i in range(thread_num):
-        thread_pool.append(threading.Thread(target=run_func, args=(result, df, thread_indices[i], thread_indices[i+1],)))
-    for t in thread_pool:
-        t.start()
-    for t in thread_pool:
-        t.join()
-    return result
+    df_b = df_b.drop('last_self_deal', axis=1)
+
+    merged_result = pd.merge(df_b, df_a[['service_order_id', 'last_self_deal']], on='service_order_id', how='inner')
+
+    merged_result = merged_result.drop_duplicates(subset=['service_order_id'], keep='first')
 
 
-save_schema = schema.copy()
-save_schema.append('抽取内容')
-result1 = thread_run(merged_result, run_local_thread, thread_num)
-new_df = pd.DataFrame(result1, columns=save_schema)
-new_df.to_excel("szb_3月_new.xlsx", index=False, engine="openpyxl")
+    schema = ['service_order_id', 'accept_date', 'service_type_desc', 'accept_channel_desc', 'accept_content', 'region_name', 'appeal_prod_name', 'appeal_reason_desc', 'appeal_child_desc', 'prod_one_desc', 'prod_two_desc', 'offer_id', 'number_type', 'prod_num_new', 'cust_id', 'pd_inst_id', 'rela_info', 'cust_tp_id', 'insert_time', 'state', 'dispatch_time', 'dispatch_result', 'area_name', 'sub_station_name', 'is_zy', 'process_type', 'process_orgid', 'work_sheetid', 'dy_date', 'last_self_deal']
+    schema_size = len(schema)
+
+    data_size = len(merged_result)
+    thread_num = 100
 
 
+    def run_local_thread(result, df, start_index, end_index):
+        for i in range(start_index, end_index):
+            row_data = df.iloc[i]
+            local_result = result[i]
+            for j in range(schema_size):
+                local_result.append(row_data[schema[j]])
+            washed_data = wash_pending_content(row_data['appeal_prod_name'], '', row_data['accept_content'])
+            local_result.append(washed_data)
+            print(f"finish run {i}/{end_index} data")
 
-file_name = "business_scene/suzhiban/march_run/szb_3月_new.xlsx"
+    def thread_run(df, run_func, thread_num):
+        data_size = len(df)
+        thread_pool = []
+        thread_indices = split_thread_data(data_size, thread_num)
+        result = [[] for _ in range(data_size)]
+        for i in range(thread_num):
+            thread_pool.append(threading.Thread(target=run_func, args=(result, df, thread_indices[i], thread_indices[i+1],)))
+        for t in thread_pool:
+            t.start()
+        for t in thread_pool:
+            t.join()
+        return result
+
+
+    save_schema = schema.copy()
+    save_schema.append('抽取内容')
+    result1 = thread_run(merged_result, run_local_thread, thread_num)
+    new_df = pd.DataFrame(result1, columns=save_schema)
+    new_df.to_excel("szb_3月_new.xlsx", index=False, engine="openpyxl")
+
+
+['营销服务类', '开通及停用类', '销户退订类', '费用争议类']
+file_name = "szb_3月_new.xlsx"
 df = pd.read_excel(file_name, engine="openpyxl")
-df = df[df['appeal_prod_name'] == '营销服务类']
+df = df[df['appeal_prod_name'] == '开通及停用类']
 
 
 
@@ -63,7 +66,7 @@ from math import ceil
 # 按地域比例抽取若干条。看效果如何。如果效果不行就直接按地市维度来做。
 import random
 cities = ["南京市", "无锡", "徐州", "常州", "苏州", "南通", "连云港", "淮安", "盐城", "扬州", "镇江", "泰州", "宿迁"]
-sample_num = 500
+sample_num = 300
 random.seed(10)
 
 city_save = {}
@@ -106,13 +109,13 @@ df = df.iloc[get_indices]
 
 
 
-from ignore.szb_back.gzzc_vote.check_data import run_inference
+from business_scene.check_data import run_inference
 from business_scene.suzhiban.utils.utils import front_complaint
 from business_scene.suzhiban.march_run.sale_apis import run_pipeline
-from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set
+from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set, ktty_rule_set
 
 
-def get_result(rough_result):
+def get_result(identity_num, rough_result):
     if "无法判断" in rough_result:
         res = "无法判断"
     elif "集约" in rough_result:
@@ -124,16 +127,16 @@ def get_result(rough_result):
         res = "不下派"
     else:
         res = "下派"
-    print(f"res: {res}, input: {rough_result}")
+    print(f"res: {res}, id: {identity_num}, input: {rough_result}")
     return res
 
-def run_total_inference(region, extract_content, prod_one_desc, prod_num_new, rule_set):
+def run_total_inference(identity_num, region, extract_content, prod_one_desc, prod_num_new, rule_set):
     def _run_1(result, extract_content, index):
-        result[index] = get_result(front_complaint(extract_content))
+        result[index] = get_result(identity_num, front_complaint(extract_content))
     def _run_2(result, region, extract_content, index):
-        result[index] = get_result(run_pipeline(extract_content, prod_num_new, region, prod_one_desc))
+        result[index] = get_result(identity_num, run_pipeline(extract_content, prod_num_new, region, prod_one_desc))
     def _run_3(result, rule_set, extract_content, index):
-        result[index] = get_result(run_inference(rule_set, extract_content))
+        result[index] = get_result(identity_num, run_inference(rule_set, extract_content))
     thread_pool = []
     result = ['', '', '']
     thread_pool.append(threading.Thread(target=_run_1, args=(result, extract_content, 0,)))
@@ -152,7 +155,7 @@ def run_total_inference(region, extract_content, prod_one_desc, prod_num_new, ru
 def run_row_data(df, rule_set, result, start_index, end_index):
     for i in range(start_index, end_index):
         row_data = df.iloc[i]
-        identity_num = row_data['id']
+        identity_num = row_data['service_order_id']
         region = row_data['region_name']
         content_1 = row_data['appeal_prod_name']
         pending_content = row_data['accept_content']
@@ -160,7 +163,7 @@ def run_row_data(df, rule_set, result, start_index, end_index):
         prod_num_new = row_data['prod_num_new']
         extract_content = row_data['抽取内容'] + f"\n所属区域：{region}"
         to_assign = row_data['last_self_deal']
-        inference_result = run_total_inference(region, extract_content, prod_one_desc, prod_num_new, rule_set)
+        inference_result = run_total_inference(identity_num, region, extract_content, prod_one_desc, prod_num_new, rule_set)
         local_result = [identity_num, region, content_1, pending_content, extract_content, to_assign]
         local_result.extend(inference_result)
         print(f"index: {i}, end: {end_index}, true: {to_assign}, result: {inference_result}")
@@ -175,13 +178,21 @@ thread_indices = split_thread_data(data_size, thread_num)
 result = [[] for _ in range(data_size)]
 
 for i in range(thread_num):
-    thread_pool.append(threading.Thread(target=run_row_data, args=(df, yxfw_rule_set, result, thread_indices[i], thread_indices[i + 1],)))
+    thread_pool.append(threading.Thread(target=run_row_data, args=(df, ktty_rule_set, result, thread_indices[i], thread_indices[i + 1],)))
 for t in thread_pool:
     t.start()
 for t in thread_pool:
     t.join()
 
 
+
+from business_scene.check_data import analysis_data
+
+unmatch_result, FN_result, FT_result = analysis_data(result, True)
+
+
+new_df = pd.DataFrame(result, columns=['id', '地域', '一级目录', '投诉内容', '抽取内容', "真实标签", "人工规则判断", "销售品判断", "自学习规则判断", "推理标签"])
+new_df.to_excel("szb_3月_开通停用类_推理结果_use.xlsx", index=False, engine="openpyxl")
 
 
 

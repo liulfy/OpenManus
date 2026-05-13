@@ -3,18 +3,10 @@ import time
 import json
 import requests
 
-import Levenshtein
+from business_scene.suzhiban.utils.utils import find_closest_string
 
 session = requests.session()
-from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement
-
-def find_closest_string(target: str, string_dict: dict) -> str:
-    """
-    调库计算列文斯顿距离，返回最接近的字符串
-    """
-    string_list = string_dict.keys()
-    # 按距离从小到大排序，取第一个
-    return min(string_list, key=lambda s: Levenshtein.distance(target, s))
+from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement_new
 
 
 def get_sale(accNum: str, regionId: str, prodId: str) -> dict:
@@ -156,22 +148,30 @@ def match_sales(complaint_sale, queried_sales):
     items = queried_sales['chargeItems']
     matched_sales = {}
     for i in items:
-        matched_sales[i['objName']] = i['offerInstId']
-
-    matched_sale = find_closest_string(complaint_sale, matched_sales)
-    offerInstId = matched_sales[matched_sale]
-    return matched_sale, offerInstId
+        try:
+            matched_sales[i['objName']] = i['offerInstId']
+        except Exception as e:
+            continue
+    try:
+        matched_sale = find_closest_string(complaint_sale, matched_sales)
+        offerInstId = matched_sales[matched_sale]
+        return matched_sale, offerInstId
+    except Exception as e:
+        return '', ''
 
 # accNum: prod_num_new
 # prodId:
 
-def run_pipeline(complaint_sale, accNum, region, prod_one_desc):
+def run_pipeline(complaint_clause, accNum, region, prod_one_desc):
     prodId, regionId = get_sale_info(region, prod_one_desc)
     sales = get_sale(accNum, regionId, prodId)
     if not sales:
         return "无法判断"
-    matched_sale, offerInstId = match_sales(complaint_sale, sales)
-    return run_goods_judgement(f"投诉销售品：{matched_sale}，用户所属区域：{region}")
+    matched_sale, offerInstId = match_sales(complaint_clause, sales)
+    if not matched_sale:
+        return "无法判断"
+        # matched_sale = complaint_sale
+    return run_goods_judgement_new(complaint_clause, sales, region)
 
     # res_1 = get_channel_step_1(regionId, offerInstId)
     # createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
@@ -220,7 +220,7 @@ RES_JSON = {
     "宽带":"100000009",
     "翼支付": "200001144",
     "智慧家庭": "100001090",
-    "天翼高清 ":"100001037"
+    "天翼高清":"100001037"
 }
 
 city_region_map = {

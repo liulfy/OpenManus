@@ -430,10 +430,10 @@ yxfw_rule_set = {
 ###实际推理
 new_df = pd.read_excel("business_scene/suzhiban/march_run/szb_3月_营销服务类.xlsx", engine="openpyxl")
 
-from ignore.szb_back.gzzc_vote.check_data import run_inference
+from business_scene.check_data import run_inference
 from business_scene.suzhiban.utils.utils import front_complaint
 from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement
-from ignore.szb_back.gzzc_vote.check_data import analysis_data
+from business_scene.check_data import analysis_data
 
 
 def get_result(rough_result):

@@ -3,10 +3,13 @@
 
 import requests
 import json
+import time
+
+from tenacity import retry
 
 # url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 url = "https://ai.ctaigw.cn/v1/chat/completions"
-URL = "http://132.254.211.161:30001/v1/chat/completions"
+# url = "http://132.254.211.161:30001/v1/chat/completions"
 
 
 # 请求头，对应 curl 中的 -H 参数
@@ -43,12 +46,20 @@ def query_doubao_with_tool(messages, tools, func):
         "caching": {"type": "enabled", "prefix": True}
     }
     while True:
-        response = requests.post(
-                url=url,
-                headers=headers,
-                json=data,  # 自动将字典转为 JSON 字符串，并设置 Content-Type
-                timeout=30  # 设置超时时间，避免请求挂起
-            )
+        retry = 5
+        while retry > 0:
+            try:
+                response = requests.post(
+                        url=url,
+                        headers=headers,
+                        json=data,  # 自动将字典转为 JSON 字符串，并设置 Content-Type
+                        timeout=30  # 设置超时时间，避免请求挂起
+                    )
+                break
+            except Exception as e:
+                retry -= 1
+                time.sleep(0.5)
+
 
         # 解析并打印响应结果
         result = response.json()
@@ -155,14 +166,22 @@ def stream_doubao(query_clause, max_tokens=150, thinking="disabled", reasoning_e
     if thinking == "enabled":
         data["reasoning_effort"] = reasoning_effort
 
-    # 发送流式 POST 请求
-    response = requests.post(
-        url=url,
-        headers=headers,
-        json=data,
-        timeout=300,
-        stream=True  # 关键：requests 开启流式接收
-    )
+    retry = 5
+    while retry > 0:
+        try:
+            # 发送流式 POST 请求
+            response = requests.post(
+                url=url,
+                headers=headers,
+                json=data,
+                timeout=300,
+                stream=True  # 关键：requests 开启流式接收
+            )
+            break
+        except Exception as e:
+            retry -= 1
+            time.sleep(0.5)
+            continue
 
     # 逐行解析 SSE 流式数据
     for line in response.iter_lines():
