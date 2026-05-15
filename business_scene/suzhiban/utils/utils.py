@@ -102,13 +102,23 @@ def find_closest_string_list(target: str, string_list: list, distance_threshold:
 
 
 import Levenshtein
-def find_closest_string(target: str, string_dict: dict) -> str:
+def find_closest_string(target: str, string_dict: dict, distance_threshold: int = -1) -> str:
     """
     调库计算列文斯顿距离，返回最接近的字符串
     """
     string_list = string_dict.keys()
     # 按距离从小到大排序，取第一个
-    return min(string_list, key=lambda s: Levenshtein.distance(target, s))
+    closest_str = min(string_list, key=lambda s: Levenshtein.distance(target, s))
+    if distance_threshold < 0:
+        return closest_str
+    # 计算最小距离
+    min_dist = distance(target, closest_str)
+    print(f"{target}, {closest_str}, {min_dist}")
+    # 判断是否满足阈值条件：最小距离 < 阈值
+    if min_dist < distance_threshold:
+        return closest_str
+    # 不满足条件返回空字符串
+    return " "
 
 # def find_closest_string_list(target: str, string_list: list) -> str:
 #     """

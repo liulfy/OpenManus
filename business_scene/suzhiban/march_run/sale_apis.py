@@ -1,8 +1,10 @@
 
 import time
-import requests
 import json
+import requests
+
 from business_scene.suzhiban.utils.utils import find_closest_string
+from model_api.doubao_seed_2_lite import query_doubao_stream
 
 session = requests.session()
 from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement_new
@@ -47,8 +49,7 @@ def get_sales(accNum: str, regionId: str, prodId: str) -> dict:
     return res
 
 
-# objId填offerinstid
-def get_channel_step_1(regionId: str, objId: str) -> dict:
+def get_channel_step_1(identity_num, regionId: str, objId: str) -> dict:
     regionId = str(regionId)
     objId = str(objId)
     regionId = regionId.replace("\n", "").replace(" ", "")
@@ -85,7 +86,8 @@ def get_channel_step_1(regionId: str, objId: str) -> dict:
             data = json.dumps(data)
             res = session.get(url=url, data=data, headers=headers, timeout=300)
             body = res.text
-        except:
+        except Exception as e:
+            print(e)
             body = ""
             time.sleep(0.5)
         if body:
@@ -144,55 +146,67 @@ def get_channel_step_2(createOrgId):
 
 
 # 销售品匹配
-def match_sales(complaint_sale, queried_sales, is_new = False):
+def match_sales(complaint_clause, sales, inst_ids):
     matched_sales = {}
-    if not is_new:
-        items = queried_sales['chargeItems']
-        for i in items:
-            try:
-                matched_sales[i['objName']] = i['offerInstId']
-            except Exception as e:
-                continue
-    else:
-        sales, ids = queried_sales
-        data_size = len(sales)
-        for i in range(data_size):
-            matched_sales[sales[i]] = ids[i]
+    # if not is_new:
+    #     items = queried_sales['chargeItems']
+    #     for i in items:
+    #         try:
+    #             matched_sales[i['objName']] = i['offerInstId']
+    #         except Exception as e:
+    #             continue
+    #     complaint_sale = complaint_clause
+    # else:
+    data_size = len(sales)
+    for i in range(data_size):
+        matched_sales[sales[i]] = inst_ids[i]
+
+    prompt = f"你将会给到用户的投诉内容和投诉品列表。请分析用户的投诉内容，与哪个投诉品最匹配（语义和文字表述都必须匹配）。如果你认为没有匹配的投诉品，请输出'没有匹配的投诉品'。请你输出投诉品列表中对应的投诉品，不需要输出其它任何内容。\n" \
+             f"投诉品列表为：{sales}\n\n\n" \
+             f"用户的投诉内容为：{complaint_clause}"
+    complaint_sale = query_doubao_stream(prompt, 20, "enabled")
+    print(f"complaint_sale: {complaint_sale}")
 
     try:
-        matched_sale = find_closest_string(complaint_sale, matched_sales)
-        offerInstId = matched_sales[matched_sale]
+        matched_sale = find_closest_string(complaint_sale, matched_sales, 4)
+        offerInstId = matched_sales.get(matched_sale, ' ')
         return matched_sale, offerInstId
     except Exception as e:
-        return '', ''
+        return ' ', ' '
 
 # accNum: prod_num_new
 # prodId:
 
-def run_pipeline(complaint_clause, accNum, region, prod_one_desc):
+def run_pipeline(identity_num, complaint_clause, accNum, region, prod_one_desc):
     prodId, regionId = get_sale_info(region, prod_one_desc)
-    sales = get_sales_new(accNum, regionId, prodId)
+    sale_res = get_sales_new(accNum, regionId, prodId)
+    sales = sale_res[0]
+    inst_ids = sale_res[1]
     if not sales:
         return "无法判断", 'no match sale'
-    matched_sale, offerInstId = match_sales(complaint_clause, sales, True)
-    if not matched_sale:
-            return "无法判断" f'no match {complaint_clause}'
+    matched_sale, offerInstId = match_sales(complaint_clause, sales, inst_ids)
+    if matched_sale == ' ':
+        return "无法判断", f'no match {complaint_clause}'
             # matched_sale = complaint_sale
-    weiyuejin_sales = get_sales(accNum, regionId, prodId)
-    if weiyuejin_sales: #走违约金
-        return run_goods_judgement_new(complaint_clause, sales, region)
+    # weiyuejin_sales = get_sales(accNum, regionId, prodId)
+    # if weiyuejin_sales: #走违约金
+    #     return run_goods_judgement_new(complaint_clause, sales, region), '违约金'
     try:
-        res_1 = get_channel_step_1(regionId, offerInstId)
+        res_1 = get_channel_step_1(identity_num, regionId, offerInstId)
         createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
         res = get_channel_step_2(createOrgId)
         res = json.loads(res)
         res = res['body']['item']['ecsChannelTypeName']
         if '地市' in res:
-            return '不下派', '渠道'
-        return '下派', '渠道'
+            return '不下派', f'渠道。匹配到：{matched_sale}'
+        return '下派', f'渠道。匹配到：{matched_sale}'
     except Exception as e:
-        return '无法判断', '渠道'
-
+        pass
+        # return '无法判断', '渠道'
+    weiyuej_res = run_goods_judgement_new(complaint_clause, sales, region)
+    if weiyuej_res != '无法判断':
+        return weiyuej_res, f'违约金。匹配到：{matched_sale}'
+    return '无法判断', f'渠道+违约金均无匹配。匹配到：{matched_sale}'
 
 
 def get_channel_step_2(createOrgId):
@@ -254,7 +268,5 @@ city_region_map = {
 
 def get_sale_info(region, prod_one_desc):
     return RES_JSON[prod_one_desc], city_region_map[region]
-
-
 
 

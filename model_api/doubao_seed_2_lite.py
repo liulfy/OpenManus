@@ -214,10 +214,16 @@ def stream_doubao(query_clause, max_tokens=150, thinking="disabled", reasoning_e
                 continue
 
 def query_doubao_stream(query_clause, max_tokens=150, thinking="disabled", reasoning_effort='medium'):
-    res = ''
-    for content in stream_doubao(query_clause, max_tokens, thinking, reasoning_effort):
-        res += content
-    return res
+    retry = 3
+    while retry:
+        try:
+            res = ''
+            for content in stream_doubao(query_clause, max_tokens, thinking, reasoning_effort):
+                res += content
+            return res
+        except Exception as e:
+            retry -= 1
+            time.sleep(0.1)
 
 
 
