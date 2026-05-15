@@ -12,7 +12,14 @@ company_scene = [
     "涉及宽带及路由器安装咨询、投诉",
     "固话 / 宽带 /iTV/ 手机无法正常使用（断网、故障、宽带网速异常等）",
     "固话号码二次放号相关问题",
-    "要求取消 VPN 业务"
+    "要求取消 VPN 业务",
+    "否认办理号码，且工单明确表示在渠营业厅申请办理，则派至分公司（若无法判断办理渠道，则派至省层面）",
+    "智慧学生证（中小学）手机卡 相关问题",
+    "苏州、南京客户对开通“10权益包”开通不认可或违约金争议",
+    "关于设备赔偿的争议",
+    "客户要求办理主副卡分离。",
+    "关于虚拟网、VPN问题争议。",
+    "宿迁客户对老号码不支持加入共享卡（副卡）有争议。"
 ]
 
 province_scene = [
@@ -45,14 +52,34 @@ province_scene = [
     "一号双终端业务争议",
     "客户咨询套餐内容",
     "自动续约不认可的违约金争议（全省集约）",
-    "亲情宽带、跨省宽带套餐争议"
+    "亲情宽带、跨省宽带套餐争议",
+    """地域为南京，礼包为
+    1、创新业务-权益业务/会员随心选6个月(线上专属)
+    2、创新业务-权益业务/会员随心选12个月(线上专属)
+    3、创新业务-权益业务/会员随心选连续包月（线上专属）
+    4、生活福利畅心用
+    5、本地生活权益欢乐享6个月（线上专属）""",
+    "若为ROT SOZ开头的线上订单、抖音直播、线上换卡类订单",
+    "要**人员回电，受理内容中未提及渠道或工号的，不下派",
+    "增值业务费用争议：WAP 信息费、视频彩铃、漏话提醒 + 彩铃优惠包、旺铺助手、诚信通、云管家、天翼游戏信息、企宣通、云回看、安全管家增强包、乐享4G特惠包/七彩铃音/特惠2元、 通信助理互联网尊享版、有声名片8元版、漏话助理、天翼云盘AI黄金会员 、 翼彩纷呈通信服务包",
+    "电子签名相关问题",
+    "“遥控器丢失”",
+    "流量不清零规则/超流量立即断网等流量相关的规则争议",
+    "客户对通话费用不认可（包含国际长途通话费、国内通话费）",
+    "客户对短信费用有争议。（包含国内短信、国际短信）",
+    "客户反映天翼成长守护相关问题",
+    "客户要求取消上网功能",
+    "客户对老号码不支持加入共享卡（副卡）有争议。除宿迁外其它地市不下派",
+    "流量包/语音包/短信包开通争议"
 ]
 
-from business_scene.suzhiban.utils.utils import judge_whether_contain_product
+from business_scene.suzhiban.utils.utils import judge_whether_contain_complaint_type
 
 def front_complaint(complaint_content):
-    if judge_whether_contain_product(complaint_content, company_scene):
-        return "不集约"
-    if judge_whether_contain_product(complaint_content, province_scene):
-        return "集约"
-    return "无法判断"
+    unmatchment =judge_whether_contain_complaint_type(complaint_content, province_scene)
+    if unmatchment:
+        return "集约", unmatchment
+    unmatchment = judge_whether_contain_complaint_type(complaint_content, company_scene)
+    if unmatchment:
+        return "不集约", unmatchment
+    return "无法判断", ''

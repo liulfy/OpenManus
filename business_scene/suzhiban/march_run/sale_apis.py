@@ -1,15 +1,14 @@
 
 import time
-import json
 import requests
-
+import json
 from business_scene.suzhiban.utils.utils import find_closest_string
 
 session = requests.session()
 from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement_new
+from business_scene.suzhiban.march_run.new_sale_api import get_sales_new
 
-
-def get_sale(accNum: str, regionId: str, prodId: str) -> dict:
+def get_sales(accNum: str, regionId: str, prodId: str) -> dict:
     accNum = str(accNum)
     regionId = str(regionId)
     prodId = str(prodId)
@@ -48,6 +47,7 @@ def get_sale(accNum: str, regionId: str, prodId: str) -> dict:
     return res
 
 
+# objId填offerinstid
 def get_channel_step_1(regionId: str, objId: str) -> dict:
     regionId = str(regionId)
     objId = str(objId)
@@ -144,14 +144,21 @@ def get_channel_step_2(createOrgId):
 
 
 # 销售品匹配
-def match_sales(complaint_sale, queried_sales):
-    items = queried_sales['chargeItems']
+def match_sales(complaint_sale, queried_sales, is_new = False):
     matched_sales = {}
-    for i in items:
-        try:
-            matched_sales[i['objName']] = i['offerInstId']
-        except Exception as e:
-            continue
+    if not is_new:
+        items = queried_sales['chargeItems']
+        for i in items:
+            try:
+                matched_sales[i['objName']] = i['offerInstId']
+            except Exception as e:
+                continue
+    else:
+        sales, ids = queried_sales
+        data_size = len(sales)
+        for i in range(data_size):
+            matched_sales[sales[i]] = ids[i]
+
     try:
         matched_sale = find_closest_string(complaint_sale, matched_sales)
         offerInstId = matched_sales[matched_sale]
@@ -164,23 +171,27 @@ def match_sales(complaint_sale, queried_sales):
 
 def run_pipeline(complaint_clause, accNum, region, prod_one_desc):
     prodId, regionId = get_sale_info(region, prod_one_desc)
-    sales = get_sale(accNum, regionId, prodId)
+    sales = get_sales_new(accNum, regionId, prodId)
     if not sales:
-        return "无法判断"
-    matched_sale, offerInstId = match_sales(complaint_clause, sales)
+        return "无法判断", 'no match sale'
+    matched_sale, offerInstId = match_sales(complaint_clause, sales, True)
     if not matched_sale:
-        return "无法判断"
-        # matched_sale = complaint_sale
-    return run_goods_judgement_new(complaint_clause, sales, region)
-
-    # res_1 = get_channel_step_1(regionId, offerInstId)
-    # createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
-    # res = get_channel_step_2(createOrgId)
-    # res = json.loads(res)
-    # res = res['body']['item']['ecsChannelTypeName']
-    # if '地市' in res:
-    #     return '不下派'
-    # return '下派'
+            return "无法判断" f'no match {complaint_clause}'
+            # matched_sale = complaint_sale
+    weiyuejin_sales = get_sales(accNum, regionId, prodId)
+    if weiyuejin_sales: #走违约金
+        return run_goods_judgement_new(complaint_clause, sales, region)
+    try:
+        res_1 = get_channel_step_1(regionId, offerInstId)
+        createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
+        res = get_channel_step_2(createOrgId)
+        res = json.loads(res)
+        res = res['body']['item']['ecsChannelTypeName']
+        if '地市' in res:
+            return '不下派', '渠道'
+        return '下派', '渠道'
+    except Exception as e:
+        return '无法判断', '渠道'
 
 
 
@@ -243,5 +254,7 @@ city_region_map = {
 
 def get_sale_info(region, prod_one_desc):
     return RES_JSON[prod_one_desc], city_region_map[region]
+
+
 
 

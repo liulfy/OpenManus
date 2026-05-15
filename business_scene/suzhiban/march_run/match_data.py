@@ -58,7 +58,7 @@ while 0:
 ['营销服务类', '开通及停用类', '销户退订类', '费用争议类']
 file_name = "szb_3月_new.xlsx"
 df = pd.read_excel(file_name, engine="openpyxl")
-df = df[df['appeal_prod_name'] == '开通及停用类']
+df = df[df['appeal_prod_name'] == '营销服务类']
 
 
 
@@ -131,17 +131,21 @@ def get_result(identity_num, rough_result):
     return res
 
 def run_total_inference(identity_num, region, extract_content, prod_one_desc, prod_num_new, rule_set):
-    def _run_1(result, extract_content, index):
-        result[index] = get_result(identity_num, front_complaint(extract_content))
-    def _run_2(result, region, extract_content, index):
-        result[index] = get_result(identity_num, run_pipeline(extract_content, prod_num_new, region, prod_one_desc))
+    def _run_1(result, extract_content, index1, index2):
+        this_result, reason = front_complaint(extract_content)
+        result[index1] = get_result(identity_num, this_result)
+        result[index2] = reason
+    def _run_2(result, region, extract_content, index1, index2):
+        this_result, reason = run_pipeline(extract_content, prod_num_new, region, prod_one_desc)
+        result[index1] = get_result(identity_num, this_result)
+        result[index2] = reason
     def _run_3(result, rule_set, extract_content, index):
         result[index] = get_result(identity_num, run_inference(rule_set, extract_content))
     thread_pool = []
-    result = ['', '', '']
-    thread_pool.append(threading.Thread(target=_run_1, args=(result, extract_content, 0,)))
-    thread_pool.append(threading.Thread(target=_run_2, args=(result, region, extract_content, 1,)))
-    thread_pool.append(threading.Thread(target=_run_3, args=(result, rule_set, extract_content, 2,)))
+    result = ['', '', '', '', '']
+    thread_pool.append(threading.Thread(target=_run_1, args=(result, extract_content, 0,1,)))
+    thread_pool.append(threading.Thread(target=_run_2, args=(result, region, extract_content, 2,3,)))
+    thread_pool.append(threading.Thread(target=_run_3, args=(result, rule_set, extract_content, 4,)))
     for t in thread_pool:
         t.start()
     for t in thread_pool:
@@ -170,15 +174,30 @@ def run_row_data(df, rule_set, result, start_index, end_index):
         result[i] = local_result
 
 
+id_list = [
+    'TS3025260314781048', 'TS3025260329028664', 'TS3025260321875799', 'TS3025260314773538',
+    'TS3025260315789390', 'TS3025260317824955', 'TS3025260321885785', 'TS3025260319848960',
+    'TS3025260309699630', 'TS30510260315784571', 'TS30510260319852398', 'TS30510260322898550',
+    'TS30516260319853270', 'TS30516260307678986', 'TS30516260308681826', 'TS30516260315784300',
+    'TS30516260322902884', 'TS30516260301567519', 'TS30519260330051354', 'TS30512260326960709',
+    'TS30512260311737702', 'TS30512260321880148', 'TS30512260303611109', 'TS30512260303604178',
+    'TS30512260311737906', 'TS30512260306650212', 'TS30512260323916143', 'TS30512260311734532',
+    'TS30512260329025381', 'TS30512260311730135', 'TS30512260319855058', 'TS30512260306651322',
+    'TS30513260311726997', 'TS30513260325942053', 'TS30518260313764193', 'TS30518260314772915',
+    'TS30518260320860990', 'TS30518260329020531', 'TS30517260307666576', 'TS30517260301573878',
+    'TS30517260329029695', 'TS30515260318829414', 'TS30514260323918928', 'TS30527260331060223',
+    'TS30527260330050374', 'TS30527260318840732', 'TS30527260303602572', 'TS30527260302596004'
+]
+newdf = df[df['service_order_id'].isin(id_list)]
 
-data_size = len(df)
-thread_num = 30
+data_size = len(newdf)
+thread_num = 10
 thread_pool = []
 thread_indices = split_thread_data(data_size, thread_num)
 result = [[] for _ in range(data_size)]
 
 for i in range(thread_num):
-    thread_pool.append(threading.Thread(target=run_row_data, args=(df, ktty_rule_set, result, thread_indices[i], thread_indices[i + 1],)))
+    thread_pool.append(threading.Thread(target=run_row_data, args=(newdf, yxfw_rule_set, result, thread_indices[i], thread_indices[i + 1],)))
 for t in thread_pool:
     t.start()
 for t in thread_pool:
@@ -191,10 +210,8 @@ from business_scene.check_data import analysis_data
 unmatch_result, FN_result, FT_result = analysis_data(result, True)
 
 
-new_df = pd.DataFrame(result, columns=['id', '地域', '一级目录', '投诉内容', '抽取内容', "真实标签", "人工规则判断", "销售品判断", "自学习规则判断", "推理标签"])
-new_df.to_excel("szb_3月_开通停用类_推理结果_use.xlsx", index=False, engine="openpyxl")
-
-
+new_df = pd.DataFrame(result, columns=['id', '地域', '一级目录', '投诉内容', '抽取内容', "真实标签", "人工规则判断", "人工规则判断解释", "销售品判断", "销售品判断解释", "自学习规则判断", "推理标签"])
+# new_df.to_excel("szb_3月_营销服务类_推理结果_use_api.xlsx", index=False, engine="openpyxl")
 
 
 

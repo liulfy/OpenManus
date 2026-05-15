@@ -77,6 +77,28 @@ def front_complaint(complaint_content):
     return "下派"
 
 
+# 需要先安装python-Levenshtein库
+# 安装命令：pip install python-Levenshtein
+from Levenshtein import distance
+
+
+def find_closest_string_list(target: str, string_list: list, distance_threshold: int = -1) -> str:
+
+    if not string_list:  # 处理空列表边界情况
+        return ""
+
+    # 找到距离最小的字符串
+    closest_str = min(string_list, key=lambda s: distance(target, s))
+    if distance_threshold < 0:
+        return closest_str
+    # 计算最小距离
+    min_dist = distance(target, closest_str)
+    print(f"{target}, {closest_str}, {min_dist}")
+    # 判断是否满足阈值条件：最小距离 < 阈值
+    if min_dist < distance_threshold:
+        return closest_str
+    # 不满足条件返回空字符串
+    return ""
 
 
 import Levenshtein
@@ -88,26 +110,42 @@ def find_closest_string(target: str, string_dict: dict) -> str:
     # 按距离从小到大排序，取第一个
     return min(string_list, key=lambda s: Levenshtein.distance(target, s))
 
-def find_closest_string_list(target: str, string_list: list) -> str:
-    """
-    调库计算列文斯顿距离，返回最接近的字符串
-    """
-    # 按距离从小到大排序，取第一个
-    return min(string_list, key=lambda s: Levenshtein.distance(target, s))
+# def find_closest_string_list(target: str, string_list: list) -> str:
+#     """
+#     调库计算列文斯顿距离，返回最接近的字符串
+#     """
+#     # 按距离从小到大排序，取第一个
+#     return min(string_list, key=lambda s: Levenshtein.distance(target, s))
 
 
 
-from model_api.doubao_seed_2_lite import query_doubao_stream
+from model_api.doubao_seed_2_lite import query_doubao_stream, query_doubao_batch
 
 def judge_whether_contain_product(product, product_list):
-    prompt = f"请判断输入的投诉内容中包含了投诉的产品。请判断投诉产品是否在给到的产品列表中。" \
+    prompt = f"输入的投诉内容中包含了投诉的产品。请判断投诉产品是否在给到的产品列表中。" \
              f"请注意，投诉的产品名称可能会存在拼写错误，拼写不规范等问题，只要语义能够匹配，即认为匹配。" \
-             f"如果没有匹配上，请输出'不匹配'。如果匹配上了，请输出列表中标准的产品名称。" \
+             f"如果投诉内容中没有提到投诉产品，或者投诉产品没有匹配上，请输出'不匹配'。如果匹配上了，请输出列表中标准的产品名称。" \
              f"你不需要输出其它任何字符" \
-             f"输入的产品列表为：{product_list}" \
-             f"\n\n输入的产品为：{product}"
-    res = query_doubao_stream(prompt, 50, 'enable')
+             f"输入的产品列表为：\n{product_list}" \
+             f"\n\n\n输入的投诉内容为：\n{product}"
+    res = query_doubao_stream(prompt, 50, 'enabled')
     if '不匹配' in res:
         return 0
-    return find_closest_string_list(res, product_list)
+    res = find_closest_string_list(res, product_list, 5)
+    if not res:
+        return 0
+    return res
 
+
+def judge_whether_contain_complaint_type(complaint_clause, product_list):
+    prompt = f"请判断给定投诉内容中的争议，是否包含在给到的投诉争议列表中。" \
+             f"请注意，只要语义能够匹配，即认为匹配。" \
+             f"如果没有包含，请输出'不匹配'。如果匹配上了，请输出列表中对应的争议。" \
+             f"你不需要输出其它任何字符" \
+             f"输入的投诉争议列表为：\n{product_list}" \
+             f"\n\n\n输入的投诉内容为：\n{complaint_clause}"
+    res = query_doubao_stream(prompt, 50, 'enabled')
+    if '不匹配' in res:
+        return 0
+    print(f"投诉内容：{complaint_clause}，匹配争议：{res}")
+    return res

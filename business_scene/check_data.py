@@ -87,11 +87,13 @@ def analysis_result(a, b, c):
         return "不下派"
 
 
-def analysis_result(a, b, c):
+def analysis_result_new(a,a_r, b, b_r, c):
     if a != "无法判断":
         return a
     if b != "无法判断":
         return b
+    if not a_r and b_r == 'no match sale':
+        return "不下派"
     return c
 
 def analysis_data(result, append = False):
@@ -104,7 +106,7 @@ def analysis_data(result, append = False):
         row_data = result[index]
         if not row_data:
             continue
-        inference_label = analysis_result(row_data[6], row_data[7], row_data[8])
+        inference_label = analysis_result_new(row_data[6], row_data[7], row_data[8], row_data[9], row_data[10])
         true_label = row_data[5]
         if "无法判断" == inference_label:
             unmatch_result.append(index)

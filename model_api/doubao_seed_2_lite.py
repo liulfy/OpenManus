@@ -8,8 +8,8 @@ import time
 from tenacity import retry
 
 # url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-url = "https://ai.ctaigw.cn/v1/chat/completions"
-# url = "http://132.254.211.161:30001/v1/chat/completions"
+# url = "https://ai.ctaigw.cn/v1/chat/completions"
+url = "http://132.254.211.161:30001/v1/chat/completions"
 
 
 # 请求头，对应 curl 中的 -H 参数
@@ -221,6 +221,46 @@ def query_doubao_stream(query_clause, max_tokens=150, thinking="disabled", reaso
 
 
 
+
+def query_doubao_batch(query_clause, max_tokens=150, thinking="disabled", reasoning_effort='medium'):
+
+    data = {
+        "messages": [
+            {
+                "content": query_clause,
+                "role": "user"
+            },
+        ],
+        # "model": "doubao-seed-2-0-pro-260215",
+        "model": "Doubao-Seed-2.0-Pro",
+        "thinking": {
+            "type": thinking
+        },
+        "max_tokens": max_tokens,
+        "caching": {"type": "enabled", "prefix": True},
+    }
+    if thinking == "enabled":
+        data["reasoning_effort"] = reasoning_effort
+
+    retry = 5
+    while retry > 0:
+        try:
+            # 发送 POST 请求
+            response = requests.post(
+                url=url,
+                headers=headers,
+                json=data,  # 自动将字典转为 JSON 字符串，并设置 Content-Type
+                timeout=600  # 设置超时时间，避免请求挂起
+            )
+            # 解析并打印响应结果
+            result = response.json()
+            answer = result["choices"][0]["message"]["content"]
+            return answer
+        except Exception as e:
+            retry -= 1
+            time.sleep(0.5)
+            continue
+    return ''
 
 
 
