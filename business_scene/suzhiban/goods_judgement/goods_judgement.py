@@ -59,7 +59,7 @@ tools = [{
 
 from model_api.doubao_seed_2_lite import query_doubao_with_tool, query_doubao_stream
 from business_scene.suzhiban.goods_judgement.intensive_processing_tool import check_intensive_processing
-from business_scene.suzhiban.utils.utils import judge_whether_sales
+
 def run_goods_judgement(user_complaint):
     messages = [
         {"role": "system", "content": system_prompt},
@@ -84,7 +84,7 @@ from business_scene.suzhiban.goods_judgement.rules import *
 from business_scene.suzhiban.utils.utils import judge_whether_contain_product
 
 
-def run_goods_judgement_new(complaint_clause, product, region):
+def run_goods_judgement_new(matched_complaint_sale, product, region):
     if region == "苏州":
         if judge_whether_contain_product(product, suzhou_not_intensive):
             return "不集约"
@@ -108,7 +108,7 @@ def run_goods_judgement_new(complaint_clause, product, region):
         prompt = f"请结合用户的地域与给定的规则，判断用户的投诉内容，是集约处理还是不集约处理（下派分公司）。" \
                  f"如果规则中描述的是：无特殊处理规定，则按照：'常州、无锡、南通、连云港、宿迁、扬州、泰州、徐州、淮安可集约处理'处理。" \
                  f"你只需要输出'集约'或者'不集约'，不需要输出其它内容。" \
-                 f"地域：{region}，投诉内容：{complaint_clause}，\n规则：{candidate_regions}"
+                 f"地域：{region}，投诉内容：{matched_complaint_sale}，\n规则：{candidate_regions}"
         res = query_doubao_stream(prompt, 50, 'enable')
         if "不" in res:
             return "不集约"

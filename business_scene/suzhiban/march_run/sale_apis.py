@@ -49,12 +49,13 @@ def get_sales(accNum: str, regionId: str, prodId: str) -> dict:
     return res
 
 
-def get_channel_step_1(identity_num, regionId: str, objId: str) -> dict:
+def get_channel_step_1(regionId: str, objId: str) -> dict:
     regionId = str(regionId)
     objId = str(objId)
     regionId = regionId.replace("\n", "").replace(" ", "")
     objId = objId.replace("\n", "").replace(" ", "")
     url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrder"
+    # url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrderIncludeHis"
     headers = {
         "X-APP-ID": "a784f3c54e37e8ac27bb0e85b05bb9cf",
         "X-APP-KEY": "fb3273de7f400db0f495c3c6f093565a",
@@ -85,6 +86,7 @@ def get_channel_step_1(identity_num, regionId: str, objId: str) -> dict:
         try:
             data = json.dumps(data)
             res = session.get(url=url, data=data, headers=headers, timeout=300)
+            # res = session.post(url=url, data=data, headers=headers, timeout=300)
             body = res.text
         except Exception as e:
             print(e)
@@ -93,6 +95,58 @@ def get_channel_step_1(identity_num, regionId: str, objId: str) -> dict:
         if body:
             break
 
+    return body
+
+
+import json
+import requests
+session = requests.session()
+import time
+def get_channel_step_1_new(regionid:str,objId:str,proid) -> dict:
+    regionid = str(regionid)
+    objId = str(objId)
+    proid = str(proid)
+    url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrderIncludeHis"
+
+    headers = {
+        "X-APP-ID": "8cdd0030e55d453186bc21d89be4df47",
+        "X-APP-KEY": "35da7ab7f31eb1341072b0e1247a2824",
+        "regionId": regionid,
+        "appKey": "JS00000196",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "requestObject": {
+            "isQryHis": "1",
+            "acceptLanId": regionid,
+            #"custOrderNbr": objId,
+            "accNbr": objId,
+            "applyObjSpecs": [proid],
+            "pageInfo": {
+                "pageIndex": "1",
+                "pageSize": "10"
+            },
+            "scopeInfos": [
+                {"scope": "customerOrder"},
+                {"scope": "orderItem"},
+                {"scope": "ordDevStaffInfo"}],
+            "serviceOfferIds": [3010100000, 3020400001,3020200000]
+        }
+    }
+    i = 0
+    while i < 10:
+        i += 1
+        try:
+            data = json.dumps(data)
+            res = session.post(url=url, data=data,headers=headers)
+            body = res.text
+        except Exception as e:
+            print(e)
+            body = ""
+            time.sleep(0.5)
+        if body:
+            break
     return body
 
 
@@ -183,7 +237,7 @@ def run_pipeline(identity_num, complaint_clause, accNum, region, prod_one_desc):
     sales = sale_res[0]
     inst_ids = sale_res[1]
     if not sales:
-        return "无法判断", 'no match sale'
+        return "无法判断", '没有销售品订购记录'
     matched_sale, offerInstId = match_sales(complaint_clause, sales, inst_ids)
     if matched_sale == ' ':
         return "无法判断", f'no match {complaint_clause}'
@@ -191,21 +245,32 @@ def run_pipeline(identity_num, complaint_clause, accNum, region, prod_one_desc):
     # weiyuejin_sales = get_sales(accNum, regionId, prodId)
     # if weiyuejin_sales: #走违约金
     #     return run_goods_judgement_new(complaint_clause, sales, region), '违约金'
+
+    # 先走违约金，没有违约金再走否认订购
+    weiyuej_res = run_goods_judgement_new(matched_sale, sales, region)
+    if weiyuej_res != '无法判断':
+        return weiyuej_res, f'违约金。匹配到：{matched_sale}'
     try:
-        res_1 = get_channel_step_1(identity_num, regionId, offerInstId)
-        createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
+
+        # res_1 = get_channel_step_1(regionId, offerInstId)
+        print([regionId, offerInstId, prodId])
+        res_1 = get_channel_step_1_new(regionId, offerInstId, prodId)
+        print(res_1)
+        try:
+            createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
+        except Exception as e:
+            res_1 = get_channel_step_1(regionId, offerInstId)
+            createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
         res = get_channel_step_2(createOrgId)
         res = json.loads(res)
         res = res['body']['item']['ecsChannelTypeName']
         if '地市' in res:
-            return '不下派', f'渠道。匹配到：{matched_sale}'
-        return '下派', f'渠道。匹配到：{matched_sale}'
+            return '下派', f'渠道。匹配到：{matched_sale}'
+        return '不下派', f'渠道。匹配到：{matched_sale}'
     except Exception as e:
         pass
         # return '无法判断', '渠道'
-    weiyuej_res = run_goods_judgement_new(complaint_clause, sales, region)
-    if weiyuej_res != '无法判断':
-        return weiyuej_res, f'违约金。匹配到：{matched_sale}'
+
     return '无法判断', f'渠道+违约金均无匹配。匹配到：{matched_sale}'
 
 
