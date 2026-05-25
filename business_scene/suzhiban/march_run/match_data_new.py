@@ -16,7 +16,7 @@ from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set, ktty_rul
 
 
 ['营销服务类', '开通及停用类', '销户退订类', '费用争议类']
-file_name = "5月192个小时清单.xlsx"
+file_name = "自学习智能体21号清单.xlsx"
 df = pd.read_excel(file_name, engine="openpyxl")
 df = df[df['appeal_prod_name'] == '营销服务类']
 
@@ -127,8 +127,8 @@ def run_total_inference(identity_num, region, extract_content, prod_one_desc, pr
     return result
 
 def run_row_data(df, rule_set, result, start_index, end_index):
-    for i in [5, 21, 22, 23, 29]:
-        # for i in range(start_index, end_index):
+    # for i in [5, 21, 22, 23, 29]:
+    for i in range(start_index, end_index):
         row_data = df.iloc[i]
         identity_num = row_data['service_order_id']
         region = row_data['region_name']
@@ -165,7 +165,7 @@ newdf = df[df['service_order_id'].isin(id_list)]
 
 newdf = df
 data_size = len(newdf)
-thread_num = 17
+thread_num = 10
 thread_pool = []
 thread_indices = split_thread_data(data_size, thread_num)
 result = [[] for _ in range(data_size)]
@@ -177,7 +177,7 @@ for t in thread_pool:
 for t in thread_pool:
     t.join()
 
-run_row_data(newdf, yxfw_rule_set, data, 1, 2)
+# run_row_data(newdf, yxfw_rule_set, data, 1, 2)
 
 
 unmatch_result, FN_result, FT_result = analysis_data(result, False)

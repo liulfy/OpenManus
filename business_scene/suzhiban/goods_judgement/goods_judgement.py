@@ -84,7 +84,15 @@ from business_scene.suzhiban.goods_judgement.rules import *
 from business_scene.suzhiban.utils.utils import judge_whether_contain_product
 
 
-def run_goods_judgement_new(matched_complaint_sale, product, region):
+def run_goods_judgement_new(complaint_clause, matched_complaint_sale, product, region):
+    # 先判断是否是违约金
+    prompt = f"""请判断用户的投诉内容，是否明确针对销售品违约金进行投诉的。请注意，必须明确投诉违约金。
+    你只需要输出'是'或者'不是'，不用输出其它任何内容。
+    用户的投诉内容如下：{complaint_clause}"""
+    res = query_doubao_stream(prompt, 20, 'enable')
+    if '不' in res:
+        return '无法判断'
+
     if region == "苏州":
         if judge_whether_contain_product(product, suzhou_not_intensive):
             return "不集约"

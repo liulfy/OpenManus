@@ -247,7 +247,8 @@ def run_pipeline(identity_num, complaint_clause, accNum, region, prod_one_desc):
     #     return run_goods_judgement_new(complaint_clause, sales, region), '违约金'
 
     # 先走违约金，没有违约金再走否认订购
-    weiyuej_res = run_goods_judgement_new(matched_sale, sales, region)
+
+    weiyuej_res = run_goods_judgement_new(complaint_clause, matched_sale, sales, region)
     if weiyuej_res != '无法判断':
         return weiyuej_res, f'违约金。匹配到：{matched_sale}'
     try:
