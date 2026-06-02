@@ -135,7 +135,7 @@ def get_result(identity_num, rough_result):
         res = "不下派"
     else:
         res = "下派"
-    print(f"res: {res}, id: {identity_num}, input: {rough_result}")
+    # print(f"res: {res}, id: {identity_num}, input: {rough_result}")
     return res
 
 def run_total_inference(identity_num, region, extract_content, prod_one_desc, prod_num_new, rule_set):
@@ -144,22 +144,22 @@ def run_total_inference(identity_num, region, extract_content, prod_one_desc, pr
         result[index1] = get_result(identity_num, this_result)
         result[index2] = reason
     def _run_2(identity_num, result, region, extract_content, index1, index2):
-        result[index1] = "无法判断"
-        result[index2] = "未实际运行"
-        # retry = 1
-        # this_result = '无法判断'
-        # reason = "fail to run"
-        # while retry:
-        #     try:
-        #         this_result, reason = run_pipeline(identity_num, extract_content, prod_num_new, region, prod_one_desc)
-        #         break
-        #     except Exception as e:
-        #         retry -= 1
-        #         time.sleep(0.1)
-        #         print(e)
-        #         print(f"fail run {identity_num}")
-        # result[index1] = get_result(identity_num, this_result)
-        # result[index2] = reason
+        # result[index1] = "无法判断"
+        # result[index2] = "未实际运行"
+        retry = 1
+        this_result = '无法判断'
+        reason = "fail to run"
+        while retry:
+            try:
+                this_result, reason = run_pipeline(identity_num, extract_content, prod_num_new, region, prod_one_desc)
+                break
+            except Exception as e:
+                retry -= 1
+                time.sleep(0.1)
+                print(e)
+                print(f"fail run {identity_num}")
+        result[index1] = get_result(identity_num, this_result)
+        result[index2] = reason
     def _run_3(result, rule_set, extract_content, index):
         result[index] = get_result(identity_num, run_inference(rule_set, extract_content))
 
@@ -214,7 +214,7 @@ def run_row_data(df, rule_set, result, start_index, end_index):
 
 newdf = df
 data_size = len(newdf)
-thread_num = 18
+thread_num = 20
 thread_pool = []
 thread_indices = split_thread_data(data_size, thread_num)
 result = [[] for _ in range(data_size)]
